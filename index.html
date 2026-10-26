@@ -1,0 +1,1222 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Битва стран</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
+<style>
+:root{
+  --bg:#0c1424; --ocean:#0c1424; --panel:#121b2e; --card:#18233a; --line:#26324c;
+  --fg:#eef2f8; --muted:#8792a8; --gold:#f2c94c; --green:#3ee08a; --red:#ff5d5d; --cyan:#4fd1ff;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--fg);font-family:Montserrat,system-ui,sans-serif}
+button{font:inherit;color:inherit}
+#app{display:grid;grid-template-columns:minmax(0,1fr) 420px;height:100vh;height:100dvh}
+#mapWrap{position:relative;overflow:hidden;background:var(--ocean);border-right:1px solid var(--gold)}
+#map{width:100%;height:100%;display:block;cursor:grab}
+#map:active{cursor:grabbing}
+.geo{transition:opacity .45s}
+.geo.neutral{fill:#2a3347}
+.geo.dim{opacity:.28}
+.geo.flash{animation:flash .9s ease-out}
+.geo.target{cursor:pointer}
+@keyframes flash{0%{opacity:.2;filter:brightness(3)}100%{opacity:1;filter:none}}
+#borders{fill:none;stroke:#0c1424;stroke-width:.7;vector-effect:non-scaling-stroke;pointer-events:none}
+#hlAtt,#hlDef,#hlPlayer{fill:none;stroke-width:2.4;vector-effect:non-scaling-stroke;pointer-events:none;stroke-linejoin:round}
+#hlAtt{stroke:var(--gold)} #hlDef{stroke:var(--red)}
+#hlPlayer{stroke:var(--cyan);stroke-width:1.6;stroke-dasharray:5 4}
+#hud{position:absolute;left:14px;top:12px;right:14px;display:flex;gap:8px;flex-wrap:wrap;pointer-events:none}
+.chip{background:#0c1424cc;border:1px solid var(--line);border-radius:20px;padding:5px 11px;font-size:12px;font-weight:600;color:var(--muted);backdrop-filter:blur(4px);display:inline-flex;align-items:center;gap:6px}
+.chip b{color:var(--fg)}
+.chip.click{pointer-events:auto;cursor:pointer}
+.chip.click:hover{border-color:var(--gold)}
+.chip img{width:20px;height:13px;object-fit:cover;border-radius:2px}
+#playerChip{display:none;border-color:var(--cyan)}
+#playerChip.on{display:inline-flex}
+#toast{position:absolute;left:50%;top:52px;transform:translate(-50%,-10px);background:#121b2ef2;border:1px solid var(--gold);border-radius:10px;padding:9px 14px;font-size:13px;font-weight:700;opacity:0;transition:all .3s;pointer-events:none;z-index:4;max-width:calc(100% - 28px);text-align:center}
+#toast.on{opacity:1;transform:translate(-50%,0)}
+#toast.fire{border-color:#ff7a3d}
+#loading{position:absolute;inset:0;display:grid;place-items:center;background:var(--bg);z-index:5;text-align:center}
+#loading h2{margin:0 0 14px;font-weight:900;font-size:26px}
+#loading ul{list-style:none;padding:0;margin:0;font-size:13px;color:var(--muted);text-align:left}
+#loading li{margin:6px 0}
+#loading li.ok::before{content:"✓ ";color:var(--green)}
+#loading li.err::before{content:"✗ ";color:var(--red)}
+#loading li.wait::before{content:"… ";color:var(--gold)}
+
+aside{background:var(--panel);display:flex;flex-direction:column;overflow-y:auto;padding:18px 18px 12px;gap:14px}
+aside > *{flex-shrink:0}
+.head{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+.head h1{margin:0;font-size:24px;font-weight:900;letter-spacing:-.3px}
+.head .ep{font-size:11px;color:var(--muted);font-weight:600;white-space:nowrap}
+
+.card{background:var(--card);border-radius:10px;padding:12px}
+.cap{font-size:10.5px;font-weight:800;letter-spacing:.6px;color:var(--gold);text-transform:uppercase}
+
+/* battle */
+#battle{min-height:262px;position:relative}
+.sides{display:grid;grid-template-columns:1fr 60px 1fr;align-items:start;text-align:center}
+.side .role{font-size:10.5px;font-weight:800;letter-spacing:.6px;color:var(--gold);height:14px;text-transform:uppercase}
+.side.lose .role{color:var(--red)} .side.win .role{color:var(--green)}
+.side.me .name{color:var(--cyan)}
+.flagbox{height:52px;display:grid;place-items:center;margin:6px 0 4px}
+.flagbox img{height:44px;width:68px;object-fit:cover;border-radius:3px;box-shadow:0 2px 8px #0008;transition:filter .4s,opacity .4s}
+.side.lose img{filter:grayscale(1) brightness(.6)}
+.side .name{font-weight:800;font-size:15px;min-height:19px;line-height:1.2}
+.side.lose .name{color:var(--muted)}
+.side .pop{font-size:10.5px;color:var(--muted);margin-top:3px;min-height:13px;font-variant-numeric:tabular-nums}
+.side .mult{font-size:13px;font-weight:800;color:var(--gold);min-height:17px}
+.side.lose .mult{color:var(--muted)}
+.vs{display:grid;place-items:center;height:100%;padding-top:20px}
+.vs svg{width:42px;height:42px;opacity:0;transform:scale(.4);transition:all .35s cubic-bezier(.3,1.6,.5,1)}
+.vs.on svg{opacity:1;transform:none}
+.vs .s2{transition:opacity .3s}
+.vs.done .s2{opacity:0}
+.duel{display:grid;grid-template-columns:1fr 40px 54px 40px 1fr;align-items:center;margin-top:12px;opacity:0;transition:opacity .3s}
+.duel.on{opacity:1}
+.pts{text-align:center}
+.pts small{display:block;font-size:9px;font-weight:800;color:var(--muted);letter-spacing:.5px}
+.pts b{font-size:26px;font-weight:900;font-variant-numeric:tabular-nums;transition:color .3s}
+.pts.gold b{color:var(--gold)}
+.pts.lose b{color:var(--muted)}
+.dcol{display:flex;flex-direction:column;gap:7px;align-items:center}
+/* 3D-кубики */
+.die3{width:30px;height:30px;perspective:220px}
+.cube{width:100%;height:100%;position:relative;transform-style:preserve-3d;transition:transform var(--t,.9s) cubic-bezier(.18,.75,.25,1)}
+.face{position:absolute;inset:0;background:#f4f4f2;border-radius:5px;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);padding:4px;backface-visibility:hidden;box-shadow:inset 0 0 0 1px #0002, inset 0 -3px 5px #0001;transition:background .25s,box-shadow .25s}
+.face i{width:5px;height:5px;border-radius:50%;background:#16181d;place-self:center;visibility:hidden}
+.face i.on{visibility:visible}
+.die3.best .face{box-shadow:0 0 0 2px var(--green),0 0 12px #3ee08a88}
+.die3.worse .face{background:#5d6577}
+.die3.worse .face i{background:#2a2f3a}
+.acol{display:flex;flex-direction:column;gap:7px}
+.arr{height:30px;display:grid;place-items:center;font-size:11px;font-weight:800;color:var(--fg);opacity:0;transition:opacity .25s}
+.arr.on{opacity:1}
+.calc{text-align:center;font-size:11px;color:var(--muted);margin-top:8px;min-height:14px;font-weight:600}
+.calc b{color:var(--gold)}
+#rngSrc{position:absolute;right:10px;bottom:8px;font-size:9.5px;color:var(--muted)}
+.choose{display:none;margin-top:10px;text-align:center}
+.choose.on{display:block}
+.choose .hint{font-size:12.5px;font-weight:700;color:var(--cyan);margin-bottom:8px}
+.cands{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-bottom:8px}
+.cand{background:#202c47;border:1px solid var(--line);border-radius:7px;padding:5px 8px;font-size:11.5px;font-weight:700;cursor:pointer;display:inline-flex;gap:6px;align-items:center}
+.cand:hover{border-color:var(--red)}
+.cand img{width:20px;height:13px;object-fit:cover;border-radius:2px}
+.cand small{color:var(--muted);font-weight:600}
+.rollrow{display:none;justify-content:center;margin-top:10px}
+.rollrow.on{display:flex}
+.rollrow .btn{font-size:14px;padding:10px 18px;animation:pulse 1.2s ease-in-out infinite}
+@keyframes pulse{50%{box-shadow:0 0 0 6px #f2c94c33}}
+
+/* boards */
+.boards{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.board{background:var(--card);border-radius:10px;padding:10px 10px 6px}
+.board ol{list-style:none;margin:8px 0 0;padding:0}
+.board li{display:grid;grid-template-columns:12px 20px 1fr auto;gap:6px;align-items:center;font-size:12px;font-weight:600;padding:4px 0;cursor:pointer}
+.board li .n{color:var(--muted);font-size:10.5px}
+.board li img{width:20px;height:13px;object-fit:cover;border-radius:2px}
+.board li .t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.board li.me .t{color:var(--cyan)}
+.board li .v{font-weight:800;font-size:11px;font-variant-numeric:tabular-nums}
+
+/* controls */
+.ctrls{display:flex;gap:6px;flex-wrap:wrap}
+.btn{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:8px 11px;font-size:12.5px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;text-decoration:none;color:var(--fg)}
+.btn:hover{border-color:var(--gold)}
+.btn.on{background:var(--gold);color:#121212;border-color:var(--gold)}
+.btn.primary{background:var(--gold);color:#121212;border-color:var(--gold);min-width:104px;justify-content:center}
+.btn:disabled{opacity:.5;cursor:default}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{background:var(--card);border:0;padding:8px 9px;font-size:12px;font-weight:700;cursor:pointer;color:var(--muted)}
+.seg button.on{background:#2b3958;color:var(--fg)}
+.tip{font-size:11px;color:var(--muted);margin-top:-6px}
+
+#log{font-size:11.5px;color:var(--muted);max-height:190px;overflow-y:auto;display:flex;flex-direction:column;gap:5px}
+#log div{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+#log img{width:18px;height:12px;object-fit:cover;border-radius:2px}
+#log b{color:var(--fg);font-weight:700}
+#log .sc{margin-left:auto;font-variant-numeric:tabular-nums}
+#log .rebel b{color:#ff9a5c}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:12px}
+.stats .k{font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.4px}
+.stats .v{font-weight:700;margin-top:3px;line-height:1.35}
+.stats .v img{width:18px;height:12px;object-fit:cover;border-radius:2px;vertical-align:-1px}
+.stats ol{margin:4px 0 0;padding-left:18px}
+footer{font-size:10px;color:#5d6880;line-height:1.55;margin-top:auto;padding-top:6px}
+footer a{color:#7f8baa}
+
+/* info card */
+#info{position:absolute;left:14px;bottom:14px;width:min(340px,calc(100% - 28px));background:#121b2eee;border:1px solid var(--line);border-radius:12px;padding:12px;display:none;backdrop-filter:blur(6px);z-index:3}
+#info.on{display:block}
+#info .top{display:flex;gap:10px;align-items:center}
+#info .top img{width:54px;height:36px;object-fit:cover;border-radius:3px}
+#info h3{margin:0;font-size:16px;font-weight:800}
+#info .sub{font-size:11px;color:var(--muted)}
+#info .wiki{display:flex;gap:10px;margin-top:9px;font-size:12px;line-height:1.45;color:#c6cddc}
+#info .wiki img{width:74px;height:74px;object-fit:cover;border-radius:6px;flex:none}
+#info .wiki p{margin:0;display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden}
+#info .row{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+#info .x{position:absolute;right:8px;top:6px;background:none;border:0;color:var(--muted);font-size:18px;cursor:pointer}
+
+/* champion */
+#champ{position:fixed;inset:0;background:#05080fcc;display:none;place-items:center;z-index:10;backdrop-filter:blur(3px)}
+#champ.on{display:grid}
+#champ .box{background:var(--panel);border:1px solid var(--gold);border-radius:16px;padding:28px 34px;text-align:center;max-width:90vw}
+#champ img{width:170px;height:110px;object-fit:cover;border-radius:6px;box-shadow:0 6px 30px #f2c94c44}
+#champ h2{margin:16px 0 4px;font-size:30px;font-weight:900}
+#champ p{color:var(--muted);margin:4px 0 18px;font-size:13px}
+
+/* 9:16 */
+#recBar{position:fixed;right:12px;top:12px;display:none;flex-direction:column;gap:6px;z-index:20}
+body.vertical #recBar{display:flex}
+#recBar .btn{background:#121b2ef0}
+#recBar .btn.rec{background:var(--red);border-color:var(--red);color:#fff}
+body.vertical{background:#000}
+body.vertical #app{width:min(100vw,calc(100dvh * 9 / 16));height:100dvh;margin:0 auto;grid-template-columns:1fr;grid-template-rows:42% 58%}
+body.vertical #mapWrap{height:auto;position:relative;border-right:0;border-bottom:1px solid var(--gold)}
+body.vertical aside{overflow:hidden;padding:16px}
+body.vertical .ctrls, body.vertical .tip, body.vertical #logCard, body.vertical #statsCard, body.vertical footer, body.vertical #hud, body.vertical #info{display:none}
+body.vertical:not(.fight) #battle{display:none}
+body.vertical .boards, body.vertical #battle{zoom:1.18}
+body.vertical .board li{padding:7px 0}
+body.vertical.fight .boards{display:none}
+
+@media (max-width:900px){
+  #app{grid-template-columns:1fr;height:auto}
+  #mapWrap{height:46vh;height:46dvh;border-right:0;border-bottom:1px solid var(--gold);position:sticky;top:0;z-index:2}
+  aside{overflow:visible}
+}
+@media (max-width:420px){
+  aside{padding:14px 14px 10px}
+  .head h1{font-size:20px}
+  .board li{font-size:11px}
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="mapWrap">
+    <svg id="map"></svg>
+    <div id="hud">
+      <span class="chip">Ход <b id="turnN">0</b></span>
+      <span class="chip click" id="rngChip" title="Источник кубиков: нажмите, чтобы переключить">🎲 <b id="rngName">—</b></span>
+      <span class="chip click" id="playerChip" title="Нажмите, чтобы перестать играть за страну"><span>Вы:</span><img alt=""><b></b><span>✕</span></span>
+    </div>
+    <div id="toast"></div>
+    <div id="info">
+      <button class="x" id="infoX" aria-label="Закрыть">×</button>
+      <div class="top"><img id="iFlag" alt=""><div><h3 id="iName"></h3><div class="sub" id="iSub"></div></div></div>
+      <div class="wiki" id="iWiki"></div>
+      <div class="row">
+        <button class="btn primary" id="iPlay">👑 Играть за эту страну</button>
+        <button class="btn" id="iAttack">⚔ Атакует следующим</button>
+        <a class="btn" id="iLink" target="_blank" rel="noopener">Википедия ↗</a>
+      </div>
+    </div>
+    <div id="loading"><div><h2>Битва стран</h2><ul id="steps"></ul></div></div>
+  </div>
+
+  <aside>
+    <div class="head"><h1 id="title">— стран в битве</h1><span class="ep" id="ep">Эп. 01</span></div>
+
+    <section class="card" id="battle">
+      <div class="sides">
+        <div class="side" id="sA"><div class="role">Атакующий</div><div class="flagbox"><img alt=""></div><div class="name"></div><div class="pop"></div><div class="mult"></div></div>
+        <div class="vs" id="vs"><svg viewBox="0 0 48 48" aria-hidden="true">
+          <g class="s1"><path d="M10 6 L36 34" stroke="#e7ecf3" stroke-width="3.2" stroke-linecap="round"/><path d="M31 38 L41 28" stroke="#c98a3a" stroke-width="3.4" stroke-linecap="round"/><path d="M37 37 L43 43" stroke="#ff6b4a" stroke-width="3.4" stroke-linecap="round"/></g>
+          <g class="s2"><path d="M38 6 L12 34" stroke="#e7ecf3" stroke-width="3.2" stroke-linecap="round"/><path d="M17 38 L7 28" stroke="#c98a3a" stroke-width="3.4" stroke-linecap="round"/><path d="M11 37 L5 43" stroke="#f2c94c" stroke-width="3.4" stroke-linecap="round"/></g>
+        </svg></div>
+        <div class="side" id="sD"><div class="role">Защитник</div><div class="flagbox"><img alt=""></div><div class="name"></div><div class="pop"></div><div class="mult"></div></div>
+      </div>
+      <div class="choose" id="choose">
+        <div class="hint">Ваш ход! Выберите цель на карте или здесь</div>
+        <div class="cands" id="cands"></div>
+        <button class="btn" id="skipBtn">Пропустить ход</button>
+      </div>
+      <div class="duel" id="duel">
+        <div class="pts" id="pA"><small>ОЧКИ</small><b>0</b></div>
+        <div class="dcol" id="dA"></div>
+        <div class="acol" id="arr"></div>
+        <div class="dcol" id="dD"></div>
+        <div class="pts" id="pD"><small>ОЧКИ</small><b>0</b></div>
+      </div>
+      <div class="rollrow" id="rollRow"><button class="btn primary" id="rollBtn">🎲 Бросить кубики</button></div>
+      <div class="calc" id="calc"></div>
+      <div id="rngSrc"></div>
+    </section>
+
+    <div class="ctrls">
+      <button class="btn primary" id="bPlay">▶ Старт</button>
+      <button class="btn" id="bStep" title="Один ход">⏭ Ход</button>
+      <div class="seg" id="speed"><button data-s="1" class="on">1×</button><button data-s="2">2×</button><button data-s="4">4×</button><button data-s="turbo" title="Без анимации — до финала">⚡</button></div>
+      <button class="btn on" id="bSound" title="Звук (Web Audio)">🔊</button>
+      <button class="btn" id="bVoice" title="Голос диктора (Web Speech)">🗣</button>
+      <button class="btn" id="bVert" title="Вертикальный режим 9:16 и запись видео">🎬 9:16</button>
+      <button class="btn" id="bShare" title="Скопировать ссылку с зерном эпизода">🔗</button>
+      <button class="btn" id="bReset" title="Новый эпизод">↻</button>
+    </div>
+    <div class="tip" id="tip">Нажмите на страну на карте, чтобы играть за неё.</div>
+
+    <div class="boards">
+      <div class="board"><div class="cap">Больше всего побед</div><ol id="bWins"></ol></div>
+      <div class="board"><div class="cap">Больше всего земли</div><ol id="bArea"></ol></div>
+    </div>
+
+    <div class="card" id="logCard"><div class="cap" style="margin-bottom:8px">Хроника</div><div id="log"></div></div>
+
+    <div class="card" id="statsCard"><div class="cap" style="margin-bottom:8px">Статистика эпизодов</div><div class="stats" id="stats"></div></div>
+
+    <footer>
+      Карта — <a href="https://github.com/topojson/world-atlas" target="_blank" rel="noopener">world-atlas</a> (Natural Earth, TopoJSON) ·
+      Население — <a href="https://datahelpdesk.worldbank.org/knowledgebase/articles/889392" target="_blank" rel="noopener">World Bank API</a> ·
+      Коды — <a href="https://github.com/michaelwittig/node-i18n-iso-countries" target="_blank" rel="noopener">i18n-iso-countries</a> ·
+      Флаги — <a href="https://flagcdn.com" target="_blank" rel="noopener">flagcdn.com</a> ·
+      Кубики — <a href="https://www.random.org" target="_blank" rel="noopener">random.org</a> (запасной — Web Crypto) ·
+      Справка — <a href="https://ru.wikipedia.org/api/rest_v1/" target="_blank" rel="noopener">Wikipedia REST API</a> ·
+      Названия — Intl.DisplayNames · Звук — Web Audio · Голос — Web Speech · Запись — Screen Capture + MediaRecorder
+    </footer>
+  </aside>
+</div>
+
+<div id="recBar">
+  <button class="btn" id="rPlay">▶ Старт</button>
+  <button class="btn" id="rRec">⏺ Запись</button>
+  <button class="btn" id="rExit">✕ Выйти из 9:16</button>
+</div>
+
+<div id="champ"><div class="box">
+  <div class="cap" id="cCap">Чемпион эпизода</div>
+  <h2 id="cName"></h2>
+  <img id="cFlag" alt="">
+  <p id="cStats"></p>
+  <button class="btn primary" id="cAgain">Новый эпизод</button>
+</div></div>
+
+<script>
+(() => {
+'use strict';
+const $ = s => document.querySelector(s);
+const ABORT = Symbol('abort');
+const R_EARTH = 6371.0088;
+const PLAYER_EVERY = 3;        // игрок атакует каждый третий ход
+const POP_SHARE = 0.5;         // победитель получает половину населения побеждённого
+const REBEL_CHANCE = 0.04;     // шанс восстания после хода
+const flagSvg = a2 => `https://flagcdn.com/${a2.toLowerCase()}.svg`;
+const flagPng = a2 => `https://flagcdn.com/w160/${a2.toLowerCase()}.png`;
+const ruName = new Intl.DisplayNames(['ru'], {type: 'region'});
+const enName = new Intl.DisplayNames(['en'], {type: 'region'});
+const fmt = n => Math.round(n).toLocaleString('ru-RU');
+const mult = p => p >= 1e9 ? 1.5 : p >= 5e8 ? 1.4 : p >= 1e8 ? 1.3 : p >= 5e7 ? 1.2 : p >= 1e7 ? 1.1 : 1.0;
+const fmtArea = a => a >= 1e6 ? `${(a / 1e6).toFixed(a >= 1e7 ? 0 : 1)} млн км²` : `${Math.round(a / 1e3)} тыс. км²`;
+const plural = (n, one, few, many) => { const m10 = n % 10, m100 = n % 100; return m10 === 1 && m100 !== 11 ? one : m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14) ? few : many; };
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, JSON.stringify(v)); } catch {} }
+};
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
+
+// Территории без данных World Bank, но игровые
+const EXTRA_POP = {TWN: 23400000, VAT: 800, ESH: 590000};
+// Спорные территории без ISO-кода присоединяем к стране
+const MERGE_BY_NAME = {'Somaliland': 'SOM', 'N. Cyprus': 'CYP', 'Siachen Glacier': 'IND'};
+// Реальные морские соседства
+const SEA_LINKS = `GBR-FRA GBR-BEL GBR-NLD GBR-ISL ISL-GRL ISL-NOR GRL-CAN DNK-SWE DNK-NOR FIN-EST SWE-LTU ESP-MAR ITA-TUN
+MLT-ITA MLT-LBY CYP-TUR CYP-SYR CYP-GRC EGY-SAU YEM-DJI YEM-ERI BHR-SAU BHR-QAT JPN-KOR JPN-RUS JPN-CHN CHN-KOR TWN-CHN
+TWN-PHL TWN-JPN PHL-IDN PHL-VNM PHL-MYS LKA-IND MDV-IND MDV-LKA SGP-MYS SGP-IDN IDN-AUS PNG-AUS AUS-NZL AUS-TLS NZL-FJI
+FJI-VUT VUT-SLB SLB-PNG NCL-VUT NCL-AUS FJI-TON TON-WSM MDG-MOZ COM-MOZ COM-MDG MUS-MDG SYC-KEN SYC-MDG CPV-SEN STP-GAB
+USA-RUS USA-CUB USA-BHS CUB-MEX CUB-JAM CUB-HTI CUB-BHS JAM-HTI DOM-PRI TTO-VEN BRB-TTO`.split(/\s+/).map(p => p.split('-'));
+
+// ---------- loading ----------
+const steps = $('#steps');
+function step(text) {
+  const li = document.createElement('li'); li.className = 'wait'; li.textContent = text; steps.append(li);
+  return { ok: t => { li.className = 'ok'; if (t) li.textContent = t; }, err: t => { li.className = 'err'; if (t) li.textContent = t; } };
+}
+async function getJSON(url, cacheKey, days = 7) {
+  if (cacheKey) {
+    const c = store.get(cacheKey);
+    if (c && Date.now() - c.t < days * 864e5) return c.v;
+  }
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(r.status);
+  const v = await r.json();
+  if (cacheKey) store.set(cacheKey, {t: Date.now(), v});
+  return v;
+}
+
+// ---------- RNG: зерно эпизода (mulberry32) + random.org для кубиков ----------
+function hashSeed(s) { let h = 2166136261; for (const c of s) h = Math.imul(h ^ c.charCodeAt(0), 16777619); return h >>> 0; }
+function newSeed() { return crypto.getRandomValues(new Uint32Array(1))[0].toString(36); }
+function rand() {
+  let t = (S.rs = (S.rs + 0x6D2B79F5) >>> 0);
+  t = Math.imul(t ^ t >>> 15, t | 1); t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+  return ((t ^ t >>> 14) >>> 0) / 4294967296;
+}
+const pick = a => a[Math.floor(rand() * a.length)];
+const pickVis = a => a[Math.floor(Math.random() * a.length)]; // только для анимации
+const RNG = {
+  pool: [], failed: false, busy: false, last: '—',
+  async refill() {
+    try {
+      const r = await fetch('https://www.random.org/integers/?num=150&min=1&max=6&col=1&base=10&format=plain&rnd=new', {cache: 'no-store'});
+      if (!r.ok) throw 0;
+      const a = (await r.text()).trim().split(/\s+/).map(Number).filter(n => n >= 1 && n <= 6);
+      if (!a.length) throw 0;
+      this.pool.push(...a);
+    } catch { this.failed = true; }
+  },
+  die(offline) {
+    if (S.dice === 'seed') { this.last = 'зерно ' + S.seed; return 1 + Math.floor(rand() * 6); }
+    if (!offline && !this.failed && !this.busy && this.pool.length < 40) {
+      this.busy = true; this.refill().finally(() => this.busy = false);
+    }
+    if (!offline && this.pool.length) { this.last = 'random.org'; return this.pool.shift(); }
+    this.last = 'Web Crypto';
+    return 1 + crypto.getRandomValues(new Uint32Array(1))[0] % 6;
+  }
+};
+
+// ---------- Sound: Web Audio ----------
+const SFX = {
+  ctx: null, on: true, out: null, rec: null,
+  ac() {
+    if (!this.ctx) {
+      this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+      this.out = this.ctx.createGain(); this.out.connect(this.ctx.destination);
+    }
+    if (this.ctx.state === 'suspended') this.ctx.resume();
+    return this.ctx;
+  },
+  recTrack() {
+    const c = this.ac();
+    if (!this.rec) { this.rec = c.createMediaStreamDestination(); this.out.connect(this.rec); }
+    return this.rec.stream.getAudioTracks();
+  },
+  env(g, t, a, peak, d) { g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(peak, t + a); g.gain.exponentialRampToValueAtTime(0.0001, t + a + d); },
+  noise(t, dur, freq, peak) {
+    const c = this.ac(), b = c.createBuffer(1, c.sampleRate * dur, c.sampleRate), d = b.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    const s = c.createBufferSource(); s.buffer = b;
+    const f = c.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = freq; f.Q.value = 1.4;
+    const g = c.createGain(); this.env(g, t, 0.003, peak, dur);
+    s.connect(f).connect(g).connect(this.out); s.start(t); s.stop(t + dur + 0.05);
+  },
+  tone(t, freq, dur, type, peak) {
+    const c = this.ac(), o = c.createOscillator(), g = c.createGain();
+    o.type = type; o.frequency.setValueAtTime(freq, t); this.env(g, t, 0.01, peak, dur);
+    o.connect(g).connect(this.out); o.start(t); o.stop(t + dur + 0.05);
+  },
+  tick() { if (!this.on) return; const t = this.ac().currentTime; this.tone(t, 1400, 0.04, 'square', 0.04); },
+  dice() { if (!this.on) return; const t = this.ac().currentTime; for (let i = 0; i < 11; i++) this.noise(t + i * 0.08 + Math.random() * 0.03, 0.05, 2200 + Math.random() * 1800, 0.35); },
+  clash() { if (!this.on) return; const t = this.ac().currentTime; this.noise(t, 0.25, 5200, 0.5); [1870, 2630, 3410].forEach(f => this.tone(t, f, 0.6, 'triangle', 0.05)); },
+  point() { if (!this.on) return; const t = this.ac().currentTime; this.tone(t, 880, 0.12, 'sine', 0.12); },
+  wave() { if (!this.on) return; const c = this.ac(), t = c.currentTime, o = c.createOscillator(), g = c.createGain(); o.type = 'sawtooth'; o.frequency.setValueAtTime(90, t); o.frequency.exponentialRampToValueAtTime(320, t + 0.9); this.env(g, t, 0.05, 0.06, 0.9); o.connect(g).connect(this.out); o.start(t); o.stop(t + 1.1); },
+  rebel() { if (!this.on) return; const t = this.ac().currentTime; [196, 233, 196, 262].forEach((f, i) => this.tone(t + i * 0.13, f, 0.3, 'square', 0.06)); this.noise(t, 0.6, 400, 0.3); },
+  win() { if (!this.on) return; const t = this.ac().currentTime; [523, 659, 784, 1047].forEach((f, i) => this.tone(t + i * 0.09, f, 0.35, 'triangle', 0.12)); },
+  lose() { if (!this.on) return; const t = this.ac().currentTime; [392, 330, 262].forEach((f, i) => this.tone(t + i * 0.16, f, 0.4, 'triangle', 0.12)); }
+};
+
+// ---------- Voice: Web Speech ----------
+const VOICE = {
+  on: false,
+  say(text) {
+    if (!this.on || !('speechSynthesis' in window)) return;
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text); u.lang = 'ru-RU'; u.rate = 1.08;
+    const v = speechSynthesis.getVoices().find(v => v.lang.startsWith('ru')); if (v) u.voice = v;
+    speechSynthesis.speak(u);
+  }
+};
+
+// ---------- state ----------
+const S = { speed: 1, turbo: false, paused: true, stepOnce: false, gen: 0, forced: null, turn: 0, ep: 1,
+  seed: '', rs: 1, dice: store.get('geo-dice', 'random'), player: null, finished: false, choice: undefined, choosing: null, rolled: false };
+let topo, geoms, feats, path, proj, W = 1000, H = 600;
+let N = {};           // iso3 -> nation
+let owner = [];       // geom idx -> iso3 | null
+let orig = [];        // geom idx -> iso3 | null
+let adj = [];         // geom idx -> [idx]
+let cen = [];         // geom idx -> [lon,lat] главного полигона
+let mainBox = [];     // geom idx -> [[x0,y0],[x1,y1]]
+let playable = [];
+let svg, gZoom, gGeo, defs, bordersPath, hlAtt, hlDef, hlPlayer, zoom, geoSel;
+
+const alive = () => Object.values(N).filter(n => n.alive);
+function wait(ms) {
+  const g = S.gen;
+  return new Promise((res, rej) => {
+    let acc = 0, prev = performance.now();
+    const f = now => {
+      if (g !== S.gen) return rej(ABORT);
+      if (!S.paused) acc += (now - prev) * S.speed;
+      prev = now;
+      acc >= ms ? res() : requestAnimationFrame(f);
+    };
+    requestAnimationFrame(f);
+  });
+}
+function waitUnpaused() {
+  const g = S.gen;
+  return new Promise((res, rej) => {
+    const f = () => { if (g !== S.gen) return rej(ABORT); !S.paused ? res() : setTimeout(f, 60); };
+    f();
+  });
+}
+// ожидание действия игрока: не зависит от скорости, прерывается новым эпизодом
+function waitUntil(cond) {
+  const g = S.gen;
+  return new Promise((res, rej) => {
+    const f = () => { if (g !== S.gen) return rej(ABORT); cond() ? res() : setTimeout(f, 50); };
+    f();
+  });
+}
+let toastT;
+function toast(html, cls = '', ms = 2600) {
+  const t = $('#toast'); t.innerHTML = html; t.className = 'on ' + cls;
+  clearTimeout(toastT); toastT = setTimeout(() => t.className = cls, ms);
+}
+
+// ---------- boot ----------
+async function boot() {
+  const s1 = step('Карта мира — world-atlas (TopoJSON)');
+  const s2 = step('Население — World Bank API');
+  const s3 = step('Коды стран ISO 3166');
+  let pop = {}, codes;
+  try {
+    const [t, c, wb] = await Promise.all([
+      getJSON('https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/countries-50m.json').then(v => (s1.ok(), v)),
+      getJSON('https://cdn.jsdelivr.net/npm/i18n-iso-countries@7.14.0/codes.json').then(v => (s3.ok(), v)),
+      getJSON('https://api.worldbank.org/v2/country/all/indicator/SP.POP.TOTL?format=json&mrnev=1&per_page=400', 'wb-pop')
+        .then(v => (s2.ok(`Население — World Bank API (${v[1].length} записей, ${v[1][0].date})`), v))
+        .catch(() => { s2.err('World Bank API недоступен — без населения'); return [null, []]; })
+    ]);
+    topo = t; codes = c;
+    for (const r of wb[1] || []) if (r.value != null) pop[r.countryiso3code] = r.value;
+  } catch (e) {
+    s1.err('Не удалось загрузить карту: ' + e.message);
+    return;
+  }
+  Object.assign(pop, Object.fromEntries(Object.entries(EXTRA_POP).filter(([k]) => pop[k] == null)));
+  const s4 = step('Флаги — flagcdn.com, названия — Intl.DisplayNames');
+  buildData(codes, pop);
+  buildMap();
+  s4.ok();
+  const s5 = step('Кубики — random.org');
+  await RNG.refill();
+  RNG.failed ? s5.err('random.org недоступен — кубики от Web Crypto') : s5.ok(`Кубики — random.org (${RNG.pool.length} бросков в запасе)`);
+  setTimeout(() => $('#loading').remove(), 500);
+  renderStats();
+
+  const urlSeed = new URLSearchParams(location.search).get('seed');
+  const saved = store.get('geo-save');
+  if (urlSeed) { history.replaceState(null, '', location.pathname); newEpisode(true, urlSeed); toast(`Эпизод по ссылке · зерно <b>${esc(urlSeed)}</b>`); }
+  else if (saved && saved.v === 2 && restore(saved)) toast('Эпизод восстановлен — продолжайте с того же хода');
+  else newEpisode(!store.get('geo-ep', 0));
+}
+
+function buildData(codes, pop) {
+  const byNum = {};
+  for (const [a2, a3, num] of codes) byNum[num] = {a2, a3};
+  geoms = topo.objects.countries.geometries.filter(g => g.id !== '010'); // без Антарктиды
+  topo.objects.countries.geometries = geoms;
+  const merges = [];
+  geoms.forEach((g, i) => {
+    g.idx = i;
+    const nm = g.properties.name;
+    let c = byNum[g.id];
+    if (!c && nm === 'Kosovo') c = {a2: 'XK', a3: 'XKX'};
+    if (!c && MERGE_BY_NAME[nm]) { merges.push([i, MERGE_BY_NAME[nm]]); orig[i] = null; return; }
+    if (!c || pop[c.a3] == null) { orig[i] = null; return; }
+    if (!N[c.a3]) N[c.a3] = { iso3: c.a3, iso2: c.a2, name: ruName.of(c.a2) || nm, en: enName.of(c.a2) || nm, pop0: pop[c.a3], geoms: [] };
+    N[c.a3].geoms.push(i);
+    orig[i] = c.a3;
+  });
+  for (const [i, a3] of merges) if (N[a3]) { N[a3].geoms.push(i); orig[i] = a3; }
+  playable = geoms.map(g => g.idx).filter(i => orig[i]);
+
+  // центр главного полигона
+  feats = topojson.feature(topo, topo.objects.countries).features;
+  feats.forEach((f, i) => {
+    f.idx = i;
+    let main = f.geometry;
+    if (main && main.type === 'MultiPolygon') {
+      let best = null, ba = -1;
+      for (const p of main.coordinates) { const g = {type: 'Polygon', coordinates: p}; const a = d3.geoArea(g); if (a > ba) { ba = a; best = g; } }
+      main = best;
+    }
+    f.main = main;
+    cen[i] = main ? d3.geoCentroid(main) : [0, 0];
+    f.areaKm = d3.geoArea(f) * R_EARTH * R_EARTH;
+  });
+  for (const n of Object.values(N)) {
+    n.area0 = d3.sum(n.geoms, i => feats[i].areaKm);
+    n.mainGeom = n.geoms.reduce((a, b) => feats[b].areaKm > feats[a].areaKm ? b : a);
+  }
+
+  // соседи: сухопутные границы + реальные морские связи + запасные связи для изолированных островов
+  const nb = topojson.neighbors(geoms);
+  adj = nb.map((l, i) => orig[i] ? l.filter(j => orig[j] && orig[j] !== orig[i]) : []);
+  const link = (i, j) => { if (!adj[i].includes(j)) adj[i].push(j); if (!adj[j].includes(i)) adj[j].push(i); };
+  for (const [a, b] of SEA_LINKS) if (N[a] && N[b]) link(N[a].mainGeom, N[b].mainGeom);
+  for (const n of Object.values(N)) {
+    if (n.geoms.some(i => adj[i].length)) continue;
+    const near = playable.filter(j => orig[j] !== n.iso3)
+      .map(j => [j, d3.geoDistance(cen[n.mainGeom], cen[j])]).sort((a, b) => a[1] - b[1]).slice(0, 2);
+    for (const [j] of near) link(n.mainGeom, j);
+  }
+}
+
+function buildMap() {
+  proj = d3.geoMercator();
+  proj.fitWidth(W, {type: 'MultiPoint', coordinates: [[-169, 83], [179.9, -57]]});
+  const b = d3.geoPath(proj).bounds({type: 'MultiPoint', coordinates: [[-169, 83], [179.9, -57]]});
+  H = Math.round(b[1][1] - b[0][1]);
+  proj.translate([proj.translate()[0], proj.translate()[1] - b[0][1]]);
+  path = d3.geoPath(proj);
+  // рамка флага по сферическим границам: у пересекающих 180° меридиан (Россия, Фиджи) берём западную часть до 180°
+  feats.forEach((f, i) => {
+    if (!f.main) { mainBox[i] = [[0, 0], [0, 0]]; return; }
+    const [[lo0, la0], [lo1, la1]] = d3.geoBounds(f.main);
+    const [x0, y0] = proj([lo0, Math.min(la1, 83)]), [x1, y1] = proj([lo0 > lo1 ? 179.9 : lo1, Math.max(la0, -57)]);
+    mainBox[i] = [[x0, y0], [x1, y1]];
+  });
+
+  svg = d3.select('#map').attr('viewBox', `0 0 ${W} ${H}`).attr('preserveAspectRatio', 'xMidYMid meet');
+  defs = svg.append('defs');
+  gZoom = svg.append('g');
+  gGeo = gZoom.append('g');
+  geoSel = gGeo.selectAll('path').data(feats).join('path')
+    .attr('class', (d, i) => 'geo' + (orig[i] ? '' : ' neutral'))
+    .attr('d', path)
+    .on('click', (ev, d) => onGeoClick(d.idx));
+  bordersPath = gZoom.append('path').attr('id', 'borders');
+  hlPlayer = gZoom.append('path').attr('id', 'hlPlayer');
+  hlDef = gZoom.append('path').attr('id', 'hlDef');
+  hlAtt = gZoom.append('path').attr('id', 'hlAtt');
+  zoom = d3.zoom().scaleExtent([1, 14]).translateExtent([[-W * 0.2, -H * 0.2], [W * 1.2, H * 1.2]])
+    .on('zoom', e => gZoom.attr('transform', e.transform));
+  svg.call(zoom).on('dblclick.zoom', null);
+}
+
+// ---------- rendering ----------
+function territoryBox(n) {
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const i of n.terr) { const [[a, b], [c, d]] = mainBox[i]; x0 = Math.min(x0, a); y0 = Math.min(y0, b); x1 = Math.max(x1, c); y1 = Math.max(y1, d); }
+  return [[x0, y0], [x1, y1]];
+}
+const unionBox = isos => {
+  const bs = isos.map(i => territoryBox(N[i]));
+  return [[d3.min(bs, b => b[0][0]), d3.min(bs, b => b[0][1])], [d3.max(bs, b => b[1][0]), d3.max(bs, b => b[1][1])]];
+};
+// флаг растянут на всю территорию страны (рамка всех её земель)
+function updatePattern(n) {
+  if (!n.terr.size) return;
+  const [[x0, y0], [x1, y1]] = territoryBox(n);
+  let p = defs.select('#p-' + n.iso3);
+  if (p.empty()) {
+    p = defs.append('pattern').attr('id', 'p-' + n.iso3).attr('patternUnits', 'userSpaceOnUse');
+    p.append('rect').attr('fill', '#3a4560');
+    p.append('image').attr('href', flagSvg(n.iso2)).attr('preserveAspectRatio', 'none');
+  }
+  const w = Math.max(x1 - x0, 1), h = Math.max(y1 - y0, 1);
+  p.attr('x', x0).attr('y', y0).attr('width', w).attr('height', h);
+  p.select('rect').attr('width', w).attr('height', h);
+  p.select('image').attr('width', w).attr('height', h);
+}
+function paint(idxs) {
+  const set = idxs ? new Set(idxs) : null;
+  geoSel.filter((d, i) => (!set || set.has(i)) && owner[i]).attr('fill', d => `url(#p-${owner[d.idx]})`);
+}
+function updateBorders() {
+  bordersPath.attr('d', path(topojson.mesh(topo, topo.objects.countries, (a, b) => a === b || owner[a.idx] !== owner[b.idx])));
+}
+function setDim(on, keep = []) {
+  const k = new Set(keep);
+  geoSel.classed('dim', (d, i) => on && !k.has(owner[i]));
+}
+const outline = iso => iso && N[iso].terr.size ? path(topojson.merge(topo, [...N[iso].terr].map(i => geoms[i]))) : null;
+function highlight(att, def) { hlAtt.attr('d', outline(att)); hlDef.attr('d', outline(def)); }
+function highlightPlayer() { hlPlayer.attr('d', S.player && N[S.player].alive ? outline(S.player) : null); }
+function camera(box, dur) {
+  let t;
+  if (!box) t = d3.zoomIdentity;
+  else {
+    const [[x0, y0], [x1, y1]] = box;
+    const k = Math.max(1, Math.min(9, 0.62 / Math.max((x1 - x0) / W, (y1 - y0) / H)));
+    t = d3.zoomIdentity.translate(W / 2, H / 2).scale(k).translate(-(x0 + x1) / 2, -(y0 + y1) / 2);
+  }
+  if (S.turbo) { svg.call(zoom.transform, t); return Promise.resolve(); }
+  return svg.transition().duration(dur / S.speed).ease(d3.easeCubicInOut).call(zoom.transform, t).end().catch(() => {});
+}
+// волна захвата: флаг победителя заливает землю проигравшего от стороны победителя
+async function captureWave(moved, w, from) {
+  const [[l0, l1], [l2, l3]] = (() => { const t = {terr: new Set(moved)}; return territoryBox(t); })();
+  const cx = (from[0][0] + from[1][0]) / 2, cy = (from[0][1] + from[1][1]) / 2;
+  const corners = [[l0, l1], [l2, l1], [l0, l3], [l2, l3]].map(([x, y]) => Math.hypot(x - cx, y - cy));
+  const nx = Math.max(l0, Math.min(cx, l2)), ny = Math.max(l1, Math.min(cy, l3));
+  const r0 = Math.hypot(nx - cx, ny - cy), r1 = Math.max(...corners) + 2;
+  const id = 'wave' + (++captureWave.n);
+  const clip = defs.append('clipPath').attr('id', id);
+  const circle = clip.append('circle').attr('cx', cx).attr('cy', cy).attr('r', r0);
+  const ov = gZoom.insert('g', '#borders').attr('clip-path', `url(#${id})`);
+  ov.selectAll('path').data(moved.map(i => feats[i])).join('path').attr('d', path).attr('fill', `url(#p-${w.iso3})`);
+  SFX.wave();
+  await circle.transition().duration(1100 / S.speed).ease(d3.easeCubicInOut).attr('r', r1).end().catch(() => {});
+  paint(moved);
+  ov.remove(); clip.remove();
+}
+captureWave.n = 0;
+
+// ---------- panel ----------
+const side = id => { const el = $(id); return { el, img: el.querySelector('img'), name: el.querySelector('.name'), pop: el.querySelector('.pop'), mult: el.querySelector('.mult'), role: el.querySelector('.role') }; };
+const sA = side('#sA'), sD = side('#sD');
+const PIPS = {1: [4], 2: [0, 8], 3: [0, 4, 8], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8]};
+// поворот куба [rx, ry], при котором грань v смотрит на зрителя
+const ORIENT = {1: [0, 0], 2: [90, 0], 3: [0, -90], 4: [0, 90], 5: [-90, 0], 6: [0, 180]};
+function makeDice(col) {
+  col.innerHTML = '';
+  return [0, 1, 2].map(() => {
+    const el = document.createElement('div'); el.className = 'die3';
+    const cube = document.createElement('div'); cube.className = 'cube'; el.append(cube);
+    for (let v = 1; v <= 6; v++) {
+      const f = document.createElement('div'); f.className = 'face';
+      const [rx, ry] = ORIENT[v];
+      f.style.transform = `rotateY(${-ry}deg) rotateX(${-rx}deg) translateZ(15px)`;
+      f.innerHTML = Array.from({length: 9}, (_, k) => `<i class="${PIPS[v].includes(k) ? 'on' : ''}"></i>`).join('');
+      cube.append(f);
+    }
+    col.append(el);
+    return {el, cube, sx: 0, sy: 0};
+  });
+}
+function setDie(d, v, mode = 'snap') {
+  const [rx, ry] = ORIENT[v];
+  if (mode === 'roll') { d.sx += 1 + Math.floor(Math.random() * 2); d.sy += 1 + Math.floor(Math.random() * 2); }
+  d.cube.style.setProperty('--t', mode === 'roll' ? (1 / S.speed) + 's' : mode === 'move' ? (0.3 / S.speed) + 's' : '0s');
+  d.cube.style.transform = `rotateX(${rx + 360 * d.sx}deg) rotateY(${ry + 360 * d.sy}deg)`;
+}
+const diceA = makeDice($('#dA')), diceD = makeDice($('#dD'));
+const arrs = [0, 1, 2].map(() => { const a = document.createElement('div'); a.className = 'arr'; $('#arr').append(a); return a; });
+
+function setSide(s, n, role) {
+  s.el.className = 'side' + (n && n.iso3 === S.player ? ' me' : '');
+  s.role.textContent = role;
+  if (!n) { s.img.removeAttribute('src'); s.img.style.visibility = 'hidden'; s.name.textContent = ''; s.pop.textContent = ''; s.mult.textContent = ''; return; }
+  s.img.style.visibility = 'visible'; s.img.src = flagPng(n.iso2); s.name.textContent = n.name;
+}
+function resetBattle() {
+  setSide(sA, null, 'Атакующий'); setSide(sD, null, 'Защитник');
+  $('#vs').className = 'vs'; $('#duel').className = 'duel'; $('#calc').innerHTML = ''; $('#rngSrc').textContent = '';
+  $('#choose').classList.remove('on'); $('#rollRow').classList.remove('on');
+  for (const p of ['#pA', '#pD']) { $(p).className = 'pts'; $(p + ' b').textContent = '0'; }
+  [...diceA, ...diceD].forEach(d => { d.el.className = 'die3'; d.sx = d.sy = 0; setDie(d, 1); });
+  arrs.forEach(a => { a.className = 'arr'; a.textContent = ''; });
+}
+const setFight = on => document.body.classList.toggle('fight', on);
+function renderTitle() {
+  const n = alive().length;
+  $('#title').textContent = `${n} ${plural(n, 'страна', 'страны', 'стран')} в битве`;
+  $('#turnN').textContent = S.turn;
+  $('#ep').textContent = 'Эп. ' + String(S.ep).padStart(2, '0');
+}
+function renderHud() {
+  $('#rngName').textContent = S.dice === 'seed' ? 'по зерну' : (RNG.failed ? 'Web Crypto' : 'random.org');
+  const pc = $('#playerChip');
+  if (S.player) {
+    const n = N[S.player];
+    pc.classList.add('on'); pc.querySelector('img').src = flagPng(n.iso2);
+    pc.querySelector('b').textContent = n.name + (n.alive ? '' : ' (выбыла)');
+    $('#tip').textContent = `Вы атакуете каждый ${PLAYER_EVERY}-й ход и сами бросаете кубики.`;
+  } else { pc.classList.remove('on'); $('#tip').textContent = 'Нажмите на страну на карте, чтобы играть за неё.'; }
+  highlightPlayer();
+}
+function boardRow(n, i, v) {
+  return `<li data-iso="${n.iso3}" class="${n.iso3 === S.player ? 'me' : ''}"><span class="n">${i + 1}</span><img src="${flagPng(n.iso2)}" alt=""><span class="t">${esc(n.name)}</span><span class="v">${v}</span></li>`;
+}
+function renderBoards() {
+  const all = Object.values(N);
+  const wins = [...all].sort((a, b) => b.wins - a.wins || b.area - a.area).slice(0, 5);
+  const area = alive().sort((a, b) => b.area - a.area).slice(0, 5);
+  $('#bWins').innerHTML = wins.map((n, i) => boardRow(n, i, n.wins)).join('');
+  $('#bArea').innerHTML = area.map((n, i) => boardRow(n, i, fmtArea(n.area))).join('');
+}
+const fl = n => `<img src="${flagPng(n.iso2)}" alt="">`;
+function logLine(html, cls = '') {
+  const d = document.createElement('div'); d.className = cls; d.innerHTML = html;
+  const log = $('#log'); log.prepend(d);
+  while (log.children.length > 60) log.lastChild.remove();
+}
+function logBattle(w, l, ptsW, ptsL, attWon) {
+  logLine(`<span>${S.turn}.</span>${fl(w)}<b>${esc(w.name)}</b> ${attWon ? 'захватывает' : 'отбивается от'} ${fl(l)}${esc(l.name)}<span class="sc">${ptsW.toFixed(1)} : ${ptsL.toFixed(1)}</span>`);
+}
+$('aside').addEventListener('click', e => { const li = e.target.closest('li[data-iso]'); if (li) showInfo(N[li.dataset.iso].geoms[0]); });
+
+// ---------- статистика эпизодов ----------
+const STATS0 = {episodes: 0, champs: {}, longest: null, blowout: null, rebellions: 0, playerWins: 0};
+const stats = () => Object.assign({}, STATS0, store.get('geo-stats', {}));
+function noteBlowout(w, l, pw, pl) {
+  const st = stats(), m = pw - pl;
+  if (!st.blowout || m > st.blowout.m) { st.blowout = {m, w: w.iso3, l: l.iso3, pw, pl, ep: S.ep}; store.set('geo-stats', st); }
+}
+function renderStats() {
+  const st = stats();
+  const nm = iso => N[iso] ? `${fl(N[iso])} ${esc(N[iso].name)}` : iso;
+  const champs = Object.entries(st.champs).sort((a, b) => b[1] - a[1]).slice(0, 5);
+  $('#stats').innerHTML = `
+    <div><div class="k">Эпизодов сыграно</div><div class="v">${st.episodes}${st.playerWins ? ` · ваших побед: ${st.playerWins}` : ''}</div>
+      <div class="k" style="margin-top:8px">Восстаний</div><div class="v">${st.rebellions}</div></div>
+    <div><div class="k">Чаще всех чемпион</div><div class="v">${champs.length ? `<ol>${champs.map(([i, c]) => `<li>${nm(i)} — ${c}</li>`).join('')}</ol>` : '—'}</div></div>
+    <div><div class="k">Самый долгий эпизод</div><div class="v">${st.longest ? `${st.longest.turns} ${plural(st.longest.turns, "ход", "хода", "ходов")} · ${nm(st.longest.w)} · эп. ${st.longest.ep}` : '—'}</div></div>
+    <div><div class="k">Самый крупный разгром</div><div class="v">${st.blowout ? `${nm(st.blowout.w)} ${st.blowout.pw.toFixed(1)} : ${st.blowout.pl.toFixed(1)} ${nm(st.blowout.l)}` : '—'}</div></div>`;
+}
+
+// ---------- сохранение ----------
+function save() {
+  if (S.finished) { store.set('geo-save', null); return; }
+  store.set('geo-save', {
+    v: 2, seed: S.seed, rs: S.rs, ep: S.ep, turn: S.turn, dice: S.dice, player: S.player, owner,
+    nat: Object.fromEntries(Object.values(N).map(n => [n.iso3, [n.alive ? 1 : 0, Math.round(n.pop), n.wins]])),
+    log: [...$('#log').children].slice(0, 40).map(d => [d.className, d.innerHTML])
+  });
+}
+function restore(sv) {
+  try {
+    if (!Array.isArray(sv.owner) || sv.owner.length !== orig.length) return false;
+    S.gen++;
+    Object.assign(S, {seed: sv.seed, rs: sv.rs, ep: sv.ep, turn: sv.turn, dice: sv.dice, player: sv.player && N[sv.player] ? sv.player : null, forced: null, finished: false});
+    owner = sv.owner.map((o, i) => o && N[o] ? o : orig[i]);
+    defs.selectAll('pattern').remove();
+    for (const n of Object.values(N)) {
+      const [a, p, w] = sv.nat[n.iso3] || [1, n.pop0, 0];
+      n.alive = !!a; n.pop = p; n.wins = w;
+      n.terr = new Set(); n.area = 0;
+    }
+    owner.forEach((o, i) => { if (o) { N[o].terr.add(i); N[o].area += feats[i].areaKm; } });
+    for (const n of Object.values(N)) { if (!n.terr.size) n.alive = false; updatePattern(n); }
+    const log = $('#log'); log.innerHTML = '';
+    for (const [c, h] of sv.log || []) { const d = document.createElement('div'); d.className = c; d.innerHTML = h; log.append(d); }
+    afterReset();
+    return true;
+  } catch (e) { console.error(e); return false; }
+}
+
+// ---------- game ----------
+function newEpisode(bump = true, seed) {
+  S.gen++;
+  let ep = store.get('geo-ep', 0); if (bump || !ep) ep++; store.set('geo-ep', ep);
+  Object.assign(S, {turn: 0, forced: null, finished: false, ep, seed: seed || newSeed()});
+  S.rs = hashSeed(S.seed);
+  if (seed) S.dice = 'seed';
+  if (S.player && !N[S.player]) S.player = null;
+  defs.selectAll('pattern').remove();
+  owner = orig.slice();
+  for (const n of Object.values(N)) { n.alive = true; n.terr = new Set(n.geoms); n.pop = n.pop0; n.area = n.area0; n.wins = 0; updatePattern(n); }
+  $('#log').innerHTML = '';
+  afterReset();
+  save();
+}
+function afterReset() {
+  paint(); updateBorders(); setDim(false); highlight(); camera(null, 600);
+  resetBattle(); setFight(false); renderTitle(); renderBoards(); renderHud();
+  $('#champ').classList.remove('on');
+  setPaused(true);
+  S.gen++; loop();
+}
+function setPaused(p) {
+  S.paused = p;
+  const t = p ? (S.turn ? '▶ Дальше' : '▶ Старт') : '⏸ Пауза';
+  $('#bPlay').textContent = t; $('#rPlay').textContent = t;
+}
+function candidates(att) {
+  const set = new Set();
+  for (const i of N[att].terr) for (const j of adj[i]) { const o = owner[j]; if (o && o !== att) set.add(o); }
+  if (set.size) return [...set];
+  let best = null, bd = Infinity;
+  for (const i of N[att].terr) for (const j of playable) {
+    const o = owner[j]; if (o === att) continue;
+    const d = d3.geoDistance(cen[i], cen[j]); if (d < bd) { bd = d; best = o; }
+  }
+  return best ? [best] : [];
+}
+function chooseAttacker() {
+  const f = S.forced; S.forced = null;
+  if (f && N[f] && N[f].alive) return f;
+  if (S.player && N[S.player].alive && (S.turn + 1) % PLAYER_EVERY === 0) return S.player;
+  return pick(alive()).iso3;
+}
+function roll(offline) {
+  const a = [0, 0, 0].map(() => RNG.die(offline)), d = [0, 0, 0].map(() => RNG.die(offline));
+  const as = [...a].sort((x, y) => y - x), ds = [...d].sort((x, y) => y - x);
+  let ra = 0, rd = 0;
+  const pairs = as.map((v, k) => { const diff = v - ds[k]; if (diff > 0) ra += diff; else rd -= diff; return diff; });
+  return {a, d, as, ds, pairs, ra, rd};
+}
+function annex(w, l) {
+  const moved = [...l.terr];
+  for (const i of moved) { owner[i] = w.iso3; w.terr.add(i); }
+  l.terr.clear(); l.alive = false;
+  w.pop += l.pop * POP_SHARE; w.area += l.area; w.wins++;
+  updatePattern(w);
+  return moved;
+}
+// восстание: захваченная страна возвращает свои исходные земли
+function rebellionPick() {
+  if (alive().length < 4 || rand() >= REBEL_CHANCE) return null;
+  const dead = Object.values(N).filter(n => !n.alive && n.geoms.every(i => owner[i] && owner[i] !== n.iso3));
+  return dead.length ? pick(dead) : null;
+}
+function applyRebellion(r) {
+  const x = N[owner[r.mainGeom]];
+  for (const i of r.geoms) { const o = N[owner[i]]; o.terr.delete(i); o.area -= feats[i].areaKm; owner[i] = r.iso3; }
+  r.terr = new Set(r.geoms); r.alive = true; r.area = r.area0; r.wins = 0;
+  r.pop = r.pop0 * 0.6; x.pop = Math.max(x.pop - r.pop0 * POP_SHARE, x.pop0 * 0.5);
+  updatePattern(r); updatePattern(x);
+  paint(r.geoms);
+  const st = stats(); st.rebellions++; store.set('geo-stats', st);
+  logLine(`<span>🔥</span>${fl(r)}<b>${esc(r.name)}</b> восстаёт против ${fl(x)}${esc(x.name)}`, 'rebel');
+  return x;
+}
+function checkPlayerFell(l) {
+  if (S.player && l.iso3 === S.player) {
+    toast(`💀 Ваша страна <b>${esc(l.name)}</b> пала. Игра продолжится без вас.`, '', 4000);
+    SFX.lose(); renderHud();
+  }
+}
+
+async function loop() {
+  const g = S.gen;
+  try {
+    while (alive().length > 1) {
+      await waitUnpaused();
+      if (g !== S.gen) return;
+      S.turbo ? await turboBatch() : await battle();
+      save();
+      if (S.stepOnce) { S.stepOnce = false; setPaused(true); }
+    }
+    finish();
+  } catch (e) { if (e !== ABORT) console.error(e); }
+}
+
+async function turboBatch() {
+  const g = S.gen;
+  setDim(false); highlight(); resetBattle(); setFight(false);
+  for (let k = 0; k < 4 && alive().length > 1; k++) {
+    const att = chooseAttacker(), cs = candidates(att);
+    if (!cs.length) continue;
+    const def = pick(cs), A = N[att], D = N[def];
+    const r = roll(true);
+    const pa = r.ra * mult(A.pop), pd = r.rd * mult(D.pop);
+    const attWon = pa > pd, W_ = attWon ? A : D, L = attWon ? D : A;
+    S.turn++;
+    paint(annex(W_, L));
+    logBattle(W_, L, attWon ? pa : pd, attWon ? pd : pa, attWon);
+    noteBlowout(W_, L, attWon ? pa : pd, attWon ? pd : pa);
+    checkPlayerFell(L);
+    const reb = rebellionPick(); if (reb) applyRebellion(reb);
+  }
+  updateBorders(); renderTitle(); renderBoards(); highlightPlayer();
+  $('#rngName').textContent = S.dice === 'seed' ? 'по зерну' : 'Web Crypto';
+  await new Promise(r => setTimeout(r, 16));
+  if (g !== S.gen) throw ABORT;
+}
+
+async function roulette(s, pool, final, ms) {
+  const steps = Math.max(4, Math.round(10 / Math.sqrt(S.speed)));
+  for (let k = 0; k < steps; k++) {
+    const n = k === steps - 1 ? final : pickVis(pool);
+    s.img.src = flagPng(n.iso2); s.img.style.visibility = 'visible'; s.name.textContent = n.name;
+    SFX.tick();
+    await wait(ms * (0.4 + k / steps));
+  }
+}
+async function countPop(s, n, ms) {
+  const t0 = performance.now(), g = S.gen;
+  await new Promise(res => {
+    const f = now => {
+      if (g !== S.gen) return res();
+      const p = Math.min(1, ((now - t0) * S.speed) / ms), e = 1 - Math.pow(1 - p, 3), v = n.pop * e;
+      s.pop.textContent = 'Нас. ' + fmt(v); s.mult.textContent = '×' + mult(v).toFixed(1);
+      p < 1 ? requestAnimationFrame(f) : res();
+    };
+    requestAnimationFrame(f);
+  });
+}
+
+// ход игрока: выбор цели на карте или кнопкой
+async function playerTarget(A, cs) {
+  setSide(sA, A, 'Атакующий · вы');
+  setDim(true, [A.iso3, ...cs]); highlight(A.iso3);
+  geoSel.classed('target', (d, i) => cs.includes(owner[i]));
+  await camera(unionBox([A.iso3, ...cs]), 900);
+  $('#cands').innerHTML = cs.map(c => N[c]).sort((a, b) => a.pop - b.pop)
+    .map(n => `<button class="cand" data-iso="${n.iso3}">${fl(n)}${esc(n.name)} <small>×${mult(n.pop).toFixed(1)}</small></button>`).join('');
+  $('#choose').classList.add('on');
+  S.choosing = new Set(cs); S.choice = undefined;
+  VOICE.say('Ваш ход. Выберите цель.');
+  await waitUntil(() => S.choice !== undefined);
+  const c = S.choice; S.choosing = null; S.choice = undefined;
+  geoSel.classed('target', false);
+  $('#choose').classList.remove('on');
+  return c;
+}
+$('#cands').addEventListener('click', e => { const b = e.target.closest('.cand'); if (b && S.choosing) S.choice = b.dataset.iso; });
+$('#skipBtn').onclick = () => { if (S.choosing) S.choice = null; };
+
+async function battle() {
+  const att = chooseAttacker(), A = N[att];
+  const cs = candidates(att);
+  if (!cs.length) return;
+  S.turn++; renderTitle();
+  resetBattle(); setFight(true);
+  const mine = att === S.player;
+  let def;
+
+  if (mine) {
+    def = await playerTarget(A, cs);
+    if (!def) {
+      logLine(`<span>${S.turn}.</span>${fl(A)}<b>${esc(A.name)}</b> пропускает ход`);
+      setDim(false); highlight(); setFight(false);
+      await camera(null, 700);
+      return;
+    }
+  } else {
+    def = pick(cs);
+    setDim(true, [att]);
+    await roulette(sA, alive(), A, 70);
+    setDim(true, [att]); highlight(att);
+    await wait(350);
+  }
+  const D = N[def];
+  if (mine) setSide(sD, D, 'Защитник'); else await roulette(sD, cs.map(c => N[c]), D, 90);
+  setSide(sA, A, mine ? 'Атакующий · вы' : 'Атакующий'); setSide(sD, D, def === S.player ? 'Защитник · вы' : 'Защитник');
+  setDim(true, [att, def]); highlight(att, def);
+  await camera(unionBox([att, def]), 1100);
+  // мечи и население
+  $('#vs').classList.add('on'); SFX.clash();
+  await Promise.all([countPop(sA, A, 900), countPop(sD, D, 900)]);
+  const mA = mult(A.pop), mD = mult(D.pop);
+  await wait(250);
+  // бросок: если участвует игрок — по кнопке
+  $('#duel').classList.add('on');
+  if (S.player && (att === S.player || def === S.player)) {
+    $('#rollBtn').textContent = def === S.player ? '🛡 Защищайтесь — бросить кубики' : '🎲 Бросить кубики';
+    $('#rollRow').classList.add('on'); S.rolled = false;
+    if (def === S.player) VOICE.say(`На вас напала ${A.name}!`);
+    await waitUntil(() => S.rolled);
+    $('#rollRow').classList.remove('on');
+  }
+  const r = roll(false);
+  $('#rngName').textContent = RNG.last;
+  $('#rngSrc').textContent = 'кубики: ' + RNG.last;
+  SFX.dice();
+  r.a.forEach((v, k) => setDie(diceA[k], v, 'roll')); r.d.forEach((v, k) => setDie(diceD[k], v, 'roll'));
+  await wait(1100);
+  r.as.forEach((v, k) => setDie(diceA[k], v, 'move')); r.ds.forEach((v, k) => setDie(diceD[k], v, 'move'));
+  await wait(400);
+  // сравнение пар
+  let ca = 0, cd = 0;
+  for (let k = 0; k < 3; k++) {
+    const diff = r.pairs[k], ar = arrs[k];
+    if (diff > 0) { ar.textContent = `◀ +${diff}`; ca += diff; diceA[k].el.classList.add('best'); diceD[k].el.classList.add('worse'); }
+    else if (diff < 0) { ar.textContent = `+${-diff} ▶`; cd -= diff; diceD[k].el.classList.add('best'); diceA[k].el.classList.add('worse'); }
+    else { ar.textContent = '='; diceA[k].el.classList.add('worse'); diceD[k].el.classList.add('worse'); }
+    ar.classList.add('on');
+    $('#pA b').textContent = ca; $('#pD b').textContent = cd;
+    if (diff) SFX.point();
+    await wait(480);
+  }
+  // множитель
+  const pa = +(ca * mA).toFixed(1), pd = +(cd * mD).toFixed(1);
+  $('#pA b').textContent = pa % 1 ? pa.toFixed(1) : pa; $('#pD b').textContent = pd % 1 ? pd.toFixed(1) : pd;
+  $('#pA').classList.toggle('gold', mA > 1); $('#pD').classList.toggle('gold', mD > 1);
+  $('#calc').innerHTML = `${ca} × ${mA.toFixed(1)} = <b>${pa.toFixed(1)}</b> &nbsp;·&nbsp; ${cd} × ${mD.toFixed(1)} = <b>${pd.toFixed(1)}</b>${pa === pd ? ' · ничья — защитник устоял' : ''}`;
+  await wait(650);
+  // итог
+  const attWon = pa > pd, W_ = attWon ? A : D, L = attWon ? D : A;
+  const sW = attWon ? sA : sD, sL = attWon ? sD : sA;
+  sW.el.classList.add('win'); sW.role.textContent = 'Победитель';
+  sL.el.classList.add('lose'); sL.role.textContent = 'Проигравший';
+  $(attWon ? '#pD' : '#pA').classList.add('lose');
+  $('#vs').classList.add('done');
+  L.iso3 === S.player ? SFX.lose() : SFX.win();
+  VOICE.say(`Победа: ${W_.name}. ${L.name} выбывает.`);
+  await wait(500);
+  // аннексия с волной
+  const from = territoryBox(W_);
+  const moved = annex(W_, L);
+  await captureWave(moved, W_, from);
+  updateBorders(); setDim(true, [W_.iso3]); highlight(W_.iso3); highlightPlayer();
+  logBattle(W_, L, attWon ? pa : pd, attWon ? pd : pa, attWon);
+  noteBlowout(W_, L, attWon ? pa : pd, attWon ? pd : pa);
+  checkPlayerFell(L);
+  renderTitle(); renderBoards();
+  await wait(1000);
+  // восстание
+  const reb = rebellionPick();
+  if (reb) {
+    const x = N[owner[reb.mainGeom]];
+    setDim(true, [x.iso3]); highlight(null, x.iso3);
+    await camera(territoryBox({terr: new Set(reb.geoms)}), 900);
+    applyRebellion(reb);
+    geoSel.filter((d, i) => reb.geoms.includes(i)).classed('flash', false).each(function () { void this.getBBox(); }).classed('flash', true);
+    updateBorders(); setDim(true, [reb.iso3, x.iso3]); highlight(reb.iso3, x.iso3); highlightPlayer();
+    toast(`🔥 Восстание! <b>${esc(reb.name)}</b> отделяется от <b>${esc(x.name)}</b>`, 'fire', 3000);
+    SFX.rebel(); VOICE.say(`Восстание! ${reb.name} обретает независимость.`);
+    renderTitle(); renderBoards();
+    await wait(1800);
+  }
+  // общий план
+  setDim(false); highlight(); setFight(false);
+  await camera(null, 900);
+  await wait(350);
+}
+
+function finish() {
+  const w = alive()[0];
+  if (!w || S.finished) return;
+  S.finished = true;
+  const st = stats();
+  st.episodes++; st.champs[w.iso3] = (st.champs[w.iso3] || 0) + 1;
+  if (!st.longest || S.turn > st.longest.turns) st.longest = {turns: S.turn, w: w.iso3, ep: S.ep};
+  const me = w.iso3 === S.player;
+  if (me) st.playerWins++;
+  store.set('geo-stats', st); store.set('geo-save', null);
+  renderStats();
+  setPaused(true); setDim(false); highlight(w.iso3); setFight(false); camera(null, 800);
+  $('#cCap').textContent = me ? 'Вы победили!' : 'Чемпион эпизода';
+  $('#cName').textContent = w.name;
+  $('#cFlag').src = flagPng(w.iso2);
+  $('#cStats').textContent = `${w.wins} ${plural(w.wins, 'победа', 'победы', 'побед')} · ${fmtArea(w.area)} · население ${fmt(w.pop)} · ходов: ${S.turn}`;
+  $('#champ').classList.add('on');
+  SFX.win(); VOICE.say(me ? `Вы победили! ${w.name} правит миром!` : `Чемпион эпизода: ${w.name}!`);
+}
+
+// ---------- info card: Wikipedia REST API ----------
+const wikiCache = {};
+async function wiki(n) {
+  if (wikiCache[n.iso3]) return wikiCache[n.iso3];
+  const sum = async (lang, title) => {
+    const r = await fetch(`https://${lang}.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`);
+    if (!r.ok) return null; const j = await r.json();
+    return j.type === 'disambiguation' ? null : j;
+  };
+  let j = await sum('ru', n.name).catch(() => null);
+  if (!j) {
+    const s = await fetch(`https://ru.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(n.name + ' государство')}&srlimit=1&format=json&origin=*`).then(r => r.json()).catch(() => null);
+    const t = s && s.query.search[0] && s.query.search[0].title;
+    if (t) j = await sum('ru', t).catch(() => null);
+  }
+  if (!j) j = await sum('en', n.en).catch(() => null);
+  return wikiCache[n.iso3] = j;
+}
+let infoIso = null;
+function onGeoClick(i) {
+  if (S.choosing) { if (S.choosing.has(owner[i])) S.choice = owner[i]; return; }
+  showInfo(i);
+}
+async function showInfo(i) {
+  if (i == null || i < 0 || !orig[i]) return;
+  const n = N[orig[i]], o = N[owner[i]];
+  infoIso = o.iso3;
+  $('#iFlag').src = flagPng(n.iso2); $('#iName').textContent = n.name;
+  $('#iSub').innerHTML = (o === n ? (n.alive ? `В строю · побед: ${n.wins} · ${fmtArea(n.area)}` : '') : `Захвачена: <b style="color:var(--fg)">${esc(o.name)}</b>`) + `<br>Население: ${fmt(n.pop0)} · ×${mult(n.pop0).toFixed(1)}`;
+  $('#iAttack').textContent = `⚔ Следующим атакует: ${o.name}`;
+  $('#iPlay').textContent = S.player === o.iso3 ? '👑 Вы играете за неё' : `👑 Играть за: ${o.name}`;
+  $('#iPlay').disabled = S.player === o.iso3;
+  $('#iWiki').innerHTML = '<p>Загрузка из Википедии…</p>';
+  $('#iLink').style.display = 'none';
+  $('#info').classList.add('on');
+  const j = await wiki(n);
+  if (infoIso !== o.iso3) return;
+  if (!j) { $('#iWiki').innerHTML = '<p>Статья не найдена.</p>'; return; }
+  $('#iWiki').innerHTML = (j.thumbnail ? `<img src="${j.thumbnail.source}" alt="">` : '') + `<p></p>`;
+  $('#iWiki p').textContent = j.extract;
+  $('#iLink').href = j.content_urls.desktop.page; $('#iLink').style.display = '';
+}
+$('#infoX').onclick = () => $('#info').classList.remove('on');
+$('#iAttack').onclick = () => { if (infoIso && N[infoIso].alive) { S.forced = infoIso; $('#iAttack').textContent = '✓ Атакует следующим'; } };
+$('#iPlay').onclick = () => {
+  if (!infoIso || !N[infoIso].alive) return;
+  S.player = infoIso; renderHud(); renderBoards(); save();
+  $('#iPlay').textContent = '👑 Вы играете за неё'; $('#iPlay').disabled = true;
+  toast(`👑 Вы играете за <b>${esc(N[infoIso].name)}</b>. Ваш ход — каждый ${PLAYER_EVERY}-й.`);
+};
+$('#playerChip').onclick = () => { S.player = null; renderHud(); renderBoards(); save(); toast('Режим наблюдателя'); };
+$('#rollBtn').onclick = () => { SFX.ac(); S.rolled = true; };
+
+// ---------- 9:16 и запись (Screen Capture API + MediaRecorder) ----------
+let rec = null;
+$('#bVert').onclick = () => { document.body.classList.add('vertical'); setTimeout(() => window.dispatchEvent(new Event('resize')), 50); };
+$('#rExit').onclick = () => { if (rec) stopRec(); document.body.classList.remove('vertical'); };
+$('#rPlay').onclick = () => $('#bPlay').click();
+$('#rRec').onclick = () => rec ? stopRec() : startRec();
+async function startRec() {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia || !window.MediaRecorder) { toast('Запись не поддерживается этим браузером — используйте Chrome или Edge'); return; }
+  let stream;
+  try {
+    stream = await navigator.mediaDevices.getDisplayMedia({video: {frameRate: 30}, audio: true, preferCurrentTab: true, selfBrowserSurface: 'include'});
+  } catch { toast('Запись отменена'); return; }
+  const [vt] = stream.getVideoTracks();
+  // кадрируем запись до рамки 9:16 (Region Capture, Chrome)
+  try { if (window.CropTarget && vt.cropTo) await vt.cropTo(await CropTarget.fromElement($('#app'))); } catch {}
+  const audio = stream.getAudioTracks().length ? stream.getAudioTracks() : SFX.recTrack();
+  const mixed = new MediaStream([vt, ...audio]);
+  const mime = ['video/mp4;codecs=avc1,mp4a.40.2', 'video/mp4', 'video/webm;codecs=vp9,opus', 'video/webm'].find(m => MediaRecorder.isTypeSupported(m));
+  const chunks = [];
+  rec = new MediaRecorder(mixed, {mimeType: mime, videoBitsPerSecond: 8e6});
+  rec.ondataavailable = e => e.data.size && chunks.push(e.data);
+  rec.onstop = () => {
+    stream.getTracks().forEach(t => t.stop());
+    const blob = new Blob(chunks, {type: mime});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `bitva-stran-ep${String(S.ep).padStart(2, '0')}.${mime.startsWith('video/mp4') ? 'mp4' : 'webm'}`;
+    a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    rec = null; $('#rRec').textContent = '⏺ Запись'; $('#rRec').classList.remove('rec');
+  };
+  vt.onended = () => rec && stopRec();
+  rec.start(1000);
+  $('#rRec').textContent = '⏹ Стоп и сохранить'; $('#rRec').classList.add('rec');
+  if (S.paused) setPaused(false);
+}
+function stopRec() { if (rec && rec.state !== 'inactive') rec.stop(); }
+
+// ---------- controls ----------
+$('#bPlay').onclick = () => { SFX.on && SFX.ac(); setPaused(!S.paused); };
+$('#bStep').onclick = () => { SFX.on && SFX.ac(); if (S.paused) { S.stepOnce = true; setPaused(false); } };
+$('#speed').onclick = e => {
+  const b = e.target.closest('button'); if (!b) return;
+  $('#speed').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+  S.turbo = b.dataset.s === 'turbo'; S.speed = S.turbo ? 4 : +b.dataset.s;
+};
+$('#bSound').onclick = e => { SFX.on = !SFX.on; e.currentTarget.classList.toggle('on', SFX.on); e.currentTarget.textContent = SFX.on ? '🔊' : '🔇'; };
+$('#bVoice').onclick = e => { VOICE.on = !VOICE.on; e.currentTarget.classList.toggle('on', VOICE.on); if (!VOICE.on) speechSynthesis.cancel(); };
+$('#rngChip').onclick = () => {
+  S.dice = S.dice === 'seed' ? 'random' : 'seed'; store.set('geo-dice', S.dice); renderHud(); save();
+  toast(S.dice === 'seed' ? `Кубики по зерну <b>${esc(S.seed)}</b> — партию можно повторить по ссылке` : 'Кубики с random.org — истинная случайность');
+};
+$('#bShare').onclick = async () => {
+  const url = `${location.origin}${location.pathname}?seed=${encodeURIComponent(S.seed)}`;
+  try { await navigator.clipboard.writeText(url); } catch { prompt('Ссылка на эпизод:', url); return; }
+  toast(S.dice === 'seed'
+    ? 'Ссылка скопирована: по ней эпизод пойдёт ход в ход так же (если не вмешиваться)'
+    : 'Ссылка скопирована: эпизод с тем же зерном. Чтобы повторялся ход в ход, переключите кубики на «по зерну»', '', 4200);
+};
+$('#bReset').onclick = () => newEpisode(true);
+$('#cAgain').onclick = () => newEpisode(true);
+document.addEventListener('keydown', e => {
+  if (e.target !== document.body) return;
+  if (e.code === 'Space') { e.preventDefault(); $('#bPlay').click(); }
+  if (e.code === 'Enter' && $('#rollRow').classList.contains('on')) $('#rollBtn').click();
+});
+
+boot();
+})();
+</script>
+</body>
+</html>
