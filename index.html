@@ -11,17 +11,17 @@
 <style>
 :root{
   --bg:#0c1424; --ocean:#0c1424; --panel:#121b2e; --card:#18233a; --line:#26324c;
-  --fg:#eef2f8; --muted:#8792a8; --gold:#f2c94c; --green:#3ee08a; --red:#ff5d5d; --cyan:#4fd1ff;
+  --fg:#eef2f8; --muted:#8792a8; --gold:#f2c94c; --green:#3ee08a; --red:#ff5d5d; --cyan:#4fd1ff; --ally:#7cf29a;
 }
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--bg);color:var(--fg);font-family:Montserrat,system-ui,sans-serif}
-button{font:inherit;color:inherit}
-#app{display:grid;grid-template-columns:minmax(0,1fr) 420px;height:100vh;height:100dvh}
+button,select{font:inherit;color:inherit}
+#app{display:grid;grid-template-columns:minmax(0,1fr) 420px;height:100vh;height:100dvh;position:relative}
 #mapWrap{position:relative;overflow:hidden;background:var(--ocean);border-right:1px solid var(--gold)}
 #map{width:100%;height:100%;display:block;cursor:grab}
 #map:active{cursor:grabbing}
 .geo{transition:opacity .45s}
-.geo.neutral{fill:#2a3347}
+.geo.neutral{fill:#222b3d}
 .geo.dim{opacity:.28}
 .geo.flash{animation:flash .9s ease-out}
 .geo.target{cursor:pointer}
@@ -30,18 +30,30 @@ button{font:inherit;color:inherit}
 #hlAtt,#hlDef,#hlPlayer{fill:none;stroke-width:2.4;vector-effect:non-scaling-stroke;pointer-events:none;stroke-linejoin:round}
 #hlAtt{stroke:var(--gold)} #hlDef{stroke:var(--red)}
 #hlPlayer{stroke:var(--cyan);stroke-width:1.6;stroke-dasharray:5 4}
-#hud{position:absolute;left:14px;top:12px;right:14px;display:flex;gap:8px;flex-wrap:wrap;pointer-events:none}
+#allyLines line{stroke:var(--ally);stroke-width:1.6;stroke-dasharray:4 3;vector-effect:non-scaling-stroke;opacity:.85}
+#caps text{font-size:11px;fill:var(--gold);stroke:#0c1424;stroke-width:3px;paint-order:stroke;text-anchor:middle;dominant-baseline:central;pointer-events:none}
+#hud{position:absolute;left:14px;top:12px;right:14px;display:flex;gap:8px;flex-wrap:wrap;pointer-events:none;z-index:2}
 .chip{background:#0c1424cc;border:1px solid var(--line);border-radius:20px;padding:5px 11px;font-size:12px;font-weight:600;color:var(--muted);backdrop-filter:blur(4px);display:inline-flex;align-items:center;gap:6px}
 .chip b{color:var(--fg)}
 .chip.click{pointer-events:auto;cursor:pointer}
 .chip.click:hover{border-color:var(--gold)}
 .chip img{width:20px;height:13px;object-fit:cover;border-radius:2px}
-#playerChip{display:none;border-color:var(--cyan)}
-#playerChip.on{display:inline-flex}
+#playerChip,#betChip,#roomChip{display:none}
+#playerChip{border-color:var(--cyan)} #betChip{border-color:var(--gold)}
+#playerChip.on,#betChip.on,#roomChip.on{display:inline-flex}
 #toast{position:absolute;left:50%;top:52px;transform:translate(-50%,-10px);background:#121b2ef2;border:1px solid var(--gold);border-radius:10px;padding:9px 14px;font-size:13px;font-weight:700;opacity:0;transition:all .3s;pointer-events:none;z-index:4;max-width:calc(100% - 28px);text-align:center}
 #toast.on{opacity:1;transform:translate(-50%,0)}
-#toast.fire{border-color:#ff7a3d}
-#loading{position:absolute;inset:0;display:grid;place-items:center;background:var(--bg);z-index:5;text-align:center}
+#toast.fire{border-color:#ff7a3d} #toast.ally{border-color:var(--ally)}
+#evCard{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) scale(.7);opacity:0;transition:all .35s cubic-bezier(.3,1.5,.5,1);background:linear-gradient(160deg,#1f2b47,#121b2e);border:2px solid var(--gold);border-radius:16px;padding:18px 22px;text-align:center;z-index:5;width:min(300px,80%);pointer-events:none;box-shadow:0 10px 40px #000a}
+#evCard.on{opacity:1;transform:translate(-50%,-50%) scale(1)}
+#evCard .ic{font-size:40px;line-height:1}
+#evCard .cap{margin-top:8px}
+#evCard h3{margin:6px 0 4px;font-size:20px;font-weight:900}
+#evCard p{margin:0;font-size:13px;color:#c6cddc;line-height:1.4}
+#evCard img{width:44px;height:29px;object-fit:cover;border-radius:3px;vertical-align:middle;margin-right:6px}
+#tlLabel{position:absolute;right:14px;bottom:14px;background:#0c1424dd;border:1px solid var(--gold);border-radius:10px;padding:8px 12px;font-weight:800;font-size:14px;display:none;z-index:3}
+#tlLabel.on{display:block}
+#loading{position:absolute;inset:0;display:grid;place-items:center;background:var(--bg);z-index:6;text-align:center}
 #loading h2{margin:0 0 14px;font-weight:900;font-size:26px}
 #loading ul{list-style:none;padding:0;margin:0;font-size:13px;color:var(--muted);text-align:left}
 #loading li{margin:6px 0}
@@ -53,7 +65,7 @@ aside{background:var(--panel);display:flex;flex-direction:column;overflow-y:auto
 aside > *{flex-shrink:0}
 .head{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
 .head h1{margin:0;font-size:24px;font-weight:900;letter-spacing:-.3px}
-.head .ep{font-size:11px;color:var(--muted);font-weight:600;white-space:nowrap}
+.head .ep{font-size:11px;color:var(--muted);font-weight:600;white-space:nowrap;text-align:right}
 
 .card{background:var(--card);border-radius:10px;padding:12px}
 .cap{font-size:10.5px;font-weight:800;letter-spacing:.6px;color:var(--gold);text-transform:uppercase}
@@ -65,12 +77,13 @@ aside > *{flex-shrink:0}
 .side.lose .role{color:var(--red)} .side.win .role{color:var(--green)}
 .side.me .name{color:var(--cyan)}
 .flagbox{height:52px;display:grid;place-items:center;margin:6px 0 4px}
-.flagbox img{height:44px;width:68px;object-fit:cover;border-radius:3px;box-shadow:0 2px 8px #0008;transition:filter .4s,opacity .4s}
+.flagbox img{height:44px;width:68px;object-fit:cover;border-radius:3px;box-shadow:0 2px 8px #0008;transition:filter .4s,opacity .4s;background:#2a3347}
 .side.lose img{filter:grayscale(1) brightness(.6)}
 .side .name{font-weight:800;font-size:15px;min-height:19px;line-height:1.2}
 .side.lose .name{color:var(--muted)}
 .side .pop{font-size:10.5px;color:var(--muted);margin-top:3px;min-height:13px;font-variant-numeric:tabular-nums}
 .side .mult{font-size:13px;font-weight:800;color:var(--gold);min-height:17px}
+.side .tags{font-size:10px;font-weight:700;min-height:13px;color:var(--ally)}
 .side.lose .mult{color:var(--muted)}
 .vs{display:grid;place-items:center;height:100%;padding-top:20px}
 .vs svg{width:42px;height:42px;opacity:0;transform:scale(.4);transition:all .35s cubic-bezier(.3,1.6,.5,1)}
@@ -85,7 +98,6 @@ aside > *{flex-shrink:0}
 .pts.gold b{color:var(--gold)}
 .pts.lose b{color:var(--muted)}
 .dcol{display:flex;flex-direction:column;gap:7px;align-items:center}
-/* 3D-кубики */
 .die3{width:30px;height:30px;perspective:220px}
 .cube{width:100%;height:100%;position:relative;transform-style:preserve-3d;transition:transform var(--t,.9s) cubic-bezier(.18,.75,.25,1)}
 .face{position:absolute;inset:0;background:#f4f4f2;border-radius:5px;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);padding:4px;backface-visibility:hidden;box-shadow:inset 0 0 0 1px #0002, inset 0 -3px 5px #0001;transition:background .25s,box-shadow .25s}
@@ -97,20 +109,22 @@ aside > *{flex-shrink:0}
 .acol{display:flex;flex-direction:column;gap:7px}
 .arr{height:30px;display:grid;place-items:center;font-size:11px;font-weight:800;color:var(--fg);opacity:0;transition:opacity .25s}
 .arr.on{opacity:1}
-.calc{text-align:center;font-size:11px;color:var(--muted);margin-top:8px;min-height:14px;font-weight:600}
+.calc{text-align:center;font-size:11px;color:var(--muted);margin-top:8px;min-height:14px;font-weight:600;line-height:1.5}
 .calc b{color:var(--gold)}
 #rngSrc{position:absolute;right:10px;bottom:8px;font-size:9.5px;color:var(--muted)}
-.choose{display:none;margin-top:10px;text-align:center}
+.choose,.rollrow{display:none;margin-top:10px;text-align:center}
 .choose.on{display:block}
-.choose .hint{font-size:12.5px;font-weight:700;color:var(--cyan);margin-bottom:8px}
+.rollrow.on{display:flex;flex-wrap:wrap;gap:6px;justify-content:center}
+.hint{font-size:12.5px;font-weight:700;color:var(--cyan);margin-bottom:8px;width:100%}
 .cands{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-bottom:8px}
 .cand{background:#202c47;border:1px solid var(--line);border-radius:7px;padding:5px 8px;font-size:11.5px;font-weight:700;cursor:pointer;display:inline-flex;gap:6px;align-items:center}
 .cand:hover{border-color:var(--red)}
 .cand img{width:20px;height:13px;object-fit:cover;border-radius:2px}
 .cand small{color:var(--muted);font-weight:600}
-.rollrow{display:none;justify-content:center;margin-top:10px}
-.rollrow.on{display:flex}
-.rollrow .btn{font-size:14px;padding:10px 18px;animation:pulse 1.2s ease-in-out infinite}
+.cand.ally{border-color:#2f6b45}
+.tac{flex-direction:column;align-items:center;min-width:96px;padding:8px 10px}
+.tac small{font-size:9.5px;font-weight:600;opacity:.75}
+.tac.go{animation:pulse 1.2s ease-in-out infinite}
 @keyframes pulse{50%{box-shadow:0 0 0 6px #f2c94c33}}
 
 /* boards */
@@ -119,9 +133,10 @@ aside > *{flex-shrink:0}
 .board ol{list-style:none;margin:8px 0 0;padding:0}
 .board li{display:grid;grid-template-columns:12px 20px 1fr auto;gap:6px;align-items:center;font-size:12px;font-weight:600;padding:4px 0;cursor:pointer}
 .board li .n{color:var(--muted);font-size:10.5px}
-.board li img{width:20px;height:13px;object-fit:cover;border-radius:2px}
+.board li img{width:20px;height:13px;object-fit:cover;border-radius:2px;background:#2a3347}
 .board li .t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .board li.me .t{color:var(--cyan)}
+.board li.bet .t::after{content:" 🎯"}
 .board li .v{font-weight:800;font-size:11px;font-variant-numeric:tabular-nums}
 
 /* controls */
@@ -131,6 +146,8 @@ aside > *{flex-shrink:0}
 .btn.on{background:var(--gold);color:#121212;border-color:var(--gold)}
 .btn.primary{background:var(--gold);color:#121212;border-color:var(--gold);min-width:104px;justify-content:center}
 .btn:disabled{opacity:.5;cursor:default}
+select.btn{appearance:none;padding-right:11px}
+select.btn option{background:var(--card)}
 .seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
 .seg button{background:var(--card);border:0;padding:8px 9px;font-size:12px;font-weight:700;cursor:pointer;color:var(--muted)}
 .seg button.on{background:#2b3958;color:var(--fg)}
@@ -141,12 +158,19 @@ aside > *{flex-shrink:0}
 #log img{width:18px;height:12px;object-fit:cover;border-radius:2px}
 #log b{color:var(--fg);font-weight:700}
 #log .sc{margin-left:auto;font-variant-numeric:tabular-nums}
-#log .rebel b{color:#ff9a5c}
+#log .rebel b{color:#ff9a5c} #log .ev b{color:#c9a7ff} #log .al b{color:var(--ally)}
 .stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:12px}
 .stats .k{font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.4px}
 .stats .v{font-weight:700;margin-top:3px;line-height:1.35}
-.stats .v img{width:18px;height:12px;object-fit:cover;border-radius:2px;vertical-align:-1px}
+.stats img{width:18px;height:12px;object-fit:cover;border-radius:2px;vertical-align:-1px}
 .stats ol{margin:4px 0 0;padding-left:18px}
+#roomCard,#gPrompt{display:none}
+#roomCard.on,#gPrompt.on{display:block}
+#roomCard .row{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:8px;font-size:12px}
+#roomCard code{background:#0c1424;padding:3px 7px;border-radius:5px;font-weight:700;color:var(--gold)}
+#roomCard ul{margin:8px 0 0;padding-left:18px;font-size:12px}
+#roomCard img{width:18px;height:12px;object-fit:cover;border-radius:2px;vertical-align:-1px}
+#gPrompt{border:1px solid var(--cyan);text-align:center}
 footer{font-size:10px;color:#5d6880;line-height:1.55;margin-top:auto;padding-top:6px}
 footer a{color:#7f8baa}
 
@@ -163,28 +187,53 @@ footer a{color:#7f8baa}
 #info .row{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
 #info .x{position:absolute;right:8px;top:6px;background:none;border:0;color:var(--muted);font-size:18px;cursor:pointer}
 
-/* champion */
-#champ{position:fixed;inset:0;background:#05080fcc;display:none;place-items:center;z-index:10;backdrop-filter:blur(3px)}
-#champ.on{display:grid}
-#champ .box{background:var(--panel);border:1px solid var(--gold);border-radius:16px;padding:28px 34px;text-align:center;max-width:90vw}
-#champ img{width:170px;height:110px;object-fit:cover;border-radius:6px;box-shadow:0 6px 30px #f2c94c44}
-#champ h2{margin:16px 0 4px;font-size:30px;font-weight:900}
-#champ p{color:var(--muted);margin:4px 0 18px;font-size:13px}
+/* modals */
+.modal{position:fixed;inset:0;background:#05080fcc;display:none;place-items:center;z-index:10;backdrop-filter:blur(3px)}
+.modal.on{display:grid}
+.modal .box{background:var(--panel);border:1px solid var(--gold);border-radius:16px;padding:24px 28px;text-align:center;max-width:min(92vw,560px);max-height:92vh;overflow-y:auto}
+#champ img.big{width:170px;height:110px;object-fit:cover;border-radius:6px;box-shadow:0 6px 30px #f2c94c44}
+#champ h2{margin:12px 0 4px;font-size:30px;font-weight:900}
+#champ p{color:var(--muted);margin:4px 0 12px;font-size:13px}
+#cSum{display:grid;grid-template-columns:1fr 1fr;gap:12px;text-align:left;font-size:12px;margin:10px 0 16px}
+#cSum .k{font-size:10px;color:var(--muted);font-weight:800;text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px}
+#cSum ol{margin:0;padding-left:18px}
+#cSum img{width:18px;height:12px;object-fit:cover;border-radius:2px;vertical-align:-1px}
+#cSum .betres{grid-column:1/-1;font-weight:700;font-size:13px;text-align:center}
+.mrow{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+#betList{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px;margin:12px 0;text-align:left}
+#betList button{justify-content:flex-start}
+#betList img{width:22px;height:14px;object-fit:cover;border-radius:2px}
+
+/* intro (render) */
+#intro{position:absolute;inset:0;z-index:8;background:radial-gradient(circle at 50% 30%,#1d2a48,#0c1424 70%);display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:30px}
+#intro.on{display:flex}
+#intro .k{font-size:14px;font-weight:800;letter-spacing:2px;color:var(--gold);text-transform:uppercase}
+#intro h1{font-size:54px;font-weight:900;margin:10px 0 0;line-height:1}
+#intro h2{font-size:28px;font-weight:800;margin:10px 0 30px;color:#c6cddc}
+#intro .q{font-size:22px;font-weight:800;margin-bottom:16px}
+#intro .favs{display:grid;grid-template-columns:1fr 1fr;gap:14px;width:100%;max-width:420px}
+#intro .fav{background:var(--card);border-radius:12px;padding:12px;font-weight:800;font-size:16px}
+#intro .fav img{width:90px;height:58px;object-fit:cover;border-radius:4px;display:block;margin:0 auto 8px}
+#intro .c{margin-top:22px;font-size:16px;color:var(--muted);font-weight:700}
 
 /* 9:16 */
 #recBar{position:fixed;right:12px;top:12px;display:none;flex-direction:column;gap:6px;z-index:20}
 body.vertical #recBar{display:flex}
+body.render #recBar{display:none!important}
 #recBar .btn{background:#121b2ef0}
 #recBar .btn.rec{background:var(--red);border-color:var(--red);color:#fff}
 body.vertical{background:#000}
 body.vertical #app{width:min(100vw,calc(100dvh * 9 / 16));height:100dvh;margin:0 auto;grid-template-columns:1fr;grid-template-rows:42% 58%}
 body.vertical #mapWrap{height:auto;position:relative;border-right:0;border-bottom:1px solid var(--gold)}
 body.vertical aside{overflow:hidden;padding:16px}
-body.vertical .ctrls, body.vertical .tip, body.vertical #logCard, body.vertical #statsCard, body.vertical footer, body.vertical #hud, body.vertical #info{display:none}
+body.vertical .ctrls, body.vertical .tip, body.vertical #statsCard, body.vertical footer, body.vertical #hud, body.vertical #info, body.vertical #roomCard, body.vertical #gPrompt{display:none}
 body.vertical:not(.fight) #battle{display:none}
 body.vertical .boards, body.vertical #battle{zoom:1.18}
 body.vertical .board li{padding:7px 0}
-body.vertical.fight .boards{display:none}
+body.vertical.fight #log{max-height:110px}
+body.vertical #log{max-height:150px;overflow:hidden}
+body.guest .ctrls, body.guest .tip, body.guest #statsCard{display:none}
+body.guest #battle .choose, body.guest #battle .rollrow{display:none!important}
 
 @media (max-width:900px){
   #app{grid-template-columns:1fr;height:auto}
@@ -203,98 +252,135 @@ body.vertical.fight .boards{display:none}
   <div id="mapWrap">
     <svg id="map"></svg>
     <div id="hud">
-      <span class="chip">Ход <b id="turnN">0</b></span>
-      <span class="chip click" id="rngChip" title="Источник кубиков: нажмите, чтобы переключить">🎲 <b id="rngName">—</b></span>
-      <span class="chip click" id="playerChip" title="Нажмите, чтобы перестать играть за страну"><span>Вы:</span><img alt=""><b></b><span>✕</span></span>
+      <span class="chip"><span data-i18n="Ход|Turn">Ход</span> <b id="turnN">0</b></span>
+      <span class="chip click" id="rngChip" data-i18n-title="Источник кубиков: нажмите, чтобы переключить|Dice source: click to switch">🎲 <b id="rngName">—</b></span>
+      <span class="chip click" id="playerChip"><span data-i18n="Вы:|You:">Вы:</span><img alt=""><b></b><span>✕</span></span>
+      <span class="chip click" id="betChip">🎯<img alt=""><b></b></span>
+      <span class="chip" id="roomChip">👥 <b></b></span>
     </div>
     <div id="toast"></div>
+    <div id="evCard"><div class="ic"></div><div class="cap"></div><h3></h3><p></p></div>
+    <div id="tlLabel"></div>
     <div id="info">
-      <button class="x" id="infoX" aria-label="Закрыть">×</button>
+      <button class="x" id="infoX" aria-label="×">×</button>
       <div class="top"><img id="iFlag" alt=""><div><h3 id="iName"></h3><div class="sub" id="iSub"></div></div></div>
       <div class="wiki" id="iWiki"></div>
       <div class="row">
-        <button class="btn primary" id="iPlay">👑 Играть за эту страну</button>
-        <button class="btn" id="iAttack">⚔ Атакует следующим</button>
-        <a class="btn" id="iLink" target="_blank" rel="noopener">Википедия ↗</a>
+        <button class="btn primary" id="iPlay"></button>
+        <button class="btn" id="iAttack"></button>
+        <a class="btn" id="iLink" target="_blank" rel="noopener" data-i18n="Википедия ↗|Wikipedia ↗">Википедия ↗</a>
       </div>
     </div>
-    <div id="loading"><div><h2>Битва стран</h2><ul id="steps"></ul></div></div>
+    <div id="loading"><div><h2 data-i18n="Битва стран|Battle of Nations">Битва стран</h2><ul id="steps"></ul></div></div>
   </div>
 
   <aside>
-    <div class="head"><h1 id="title">— стран в битве</h1><span class="ep" id="ep">Эп. 01</span></div>
+    <div class="head"><h1 id="title">—</h1><span class="ep" id="ep"></span></div>
+
+    <section class="card" id="gPrompt">
+      <div class="hint" id="gHint"></div>
+      <div class="cands" id="gCands"></div>
+      <div class="mrow" id="gBtns"></div>
+    </section>
 
     <section class="card" id="battle">
       <div class="sides">
-        <div class="side" id="sA"><div class="role">Атакующий</div><div class="flagbox"><img alt=""></div><div class="name"></div><div class="pop"></div><div class="mult"></div></div>
+        <div class="side" id="sA"><div class="role"></div><div class="flagbox"><img alt=""></div><div class="name"></div><div class="pop"></div><div class="mult"></div><div class="tags"></div></div>
         <div class="vs" id="vs"><svg viewBox="0 0 48 48" aria-hidden="true">
           <g class="s1"><path d="M10 6 L36 34" stroke="#e7ecf3" stroke-width="3.2" stroke-linecap="round"/><path d="M31 38 L41 28" stroke="#c98a3a" stroke-width="3.4" stroke-linecap="round"/><path d="M37 37 L43 43" stroke="#ff6b4a" stroke-width="3.4" stroke-linecap="round"/></g>
           <g class="s2"><path d="M38 6 L12 34" stroke="#e7ecf3" stroke-width="3.2" stroke-linecap="round"/><path d="M17 38 L7 28" stroke="#c98a3a" stroke-width="3.4" stroke-linecap="round"/><path d="M11 37 L5 43" stroke="#f2c94c" stroke-width="3.4" stroke-linecap="round"/></g>
         </svg></div>
-        <div class="side" id="sD"><div class="role">Защитник</div><div class="flagbox"><img alt=""></div><div class="name"></div><div class="pop"></div><div class="mult"></div></div>
+        <div class="side" id="sD"><div class="role"></div><div class="flagbox"><img alt=""></div><div class="name"></div><div class="pop"></div><div class="mult"></div><div class="tags"></div></div>
       </div>
       <div class="choose" id="choose">
-        <div class="hint">Ваш ход! Выберите цель на карте или здесь</div>
+        <div class="hint" data-i18n="Ваш ход! Выберите цель на карте или здесь|Your turn! Pick a target on the map or here">Ваш ход!</div>
         <div class="cands" id="cands"></div>
-        <button class="btn" id="skipBtn">Пропустить ход</button>
+        <button class="btn" id="skipBtn" data-i18n="Пропустить ход|Skip turn">Пропустить ход</button>
       </div>
       <div class="duel" id="duel">
-        <div class="pts" id="pA"><small>ОЧКИ</small><b>0</b></div>
+        <div class="pts" id="pA"><small data-i18n="ОЧКИ|POINTS">ОЧКИ</small><b>0</b></div>
         <div class="dcol" id="dA"></div>
         <div class="acol" id="arr"></div>
         <div class="dcol" id="dD"></div>
-        <div class="pts" id="pD"><small>ОЧКИ</small><b>0</b></div>
+        <div class="pts" id="pD"><small data-i18n="ОЧКИ|POINTS">ОЧКИ</small><b>0</b></div>
       </div>
-      <div class="rollrow" id="rollRow"><button class="btn primary" id="rollBtn">🎲 Бросить кубики</button></div>
+      <div class="rollrow" id="rollRow"></div>
       <div class="calc" id="calc"></div>
       <div id="rngSrc"></div>
     </section>
 
     <div class="ctrls">
-      <button class="btn primary" id="bPlay">▶ Старт</button>
-      <button class="btn" id="bStep" title="Один ход">⏭ Ход</button>
-      <div class="seg" id="speed"><button data-s="1" class="on">1×</button><button data-s="2">2×</button><button data-s="4">4×</button><button data-s="turbo" title="Без анимации — до финала">⚡</button></div>
-      <button class="btn on" id="bSound" title="Звук (Web Audio)">🔊</button>
-      <button class="btn" id="bVoice" title="Голос диктора (Web Speech)">🗣</button>
-      <button class="btn" id="bVert" title="Вертикальный режим 9:16 и запись видео">🎬 9:16</button>
-      <button class="btn" id="bShare" title="Скопировать ссылку с зерном эпизода">🔗</button>
-      <button class="btn" id="bReset" title="Новый эпизод">↻</button>
+      <button class="btn primary" id="bPlay"></button>
+      <button class="btn" id="bStep" data-i18n="⏭ Ход|⏭ Step" data-i18n-title="Один ход|One turn">⏭ Ход</button>
+      <div class="seg" id="speed"><button data-s="1" class="on">1×</button><button data-s="2">2×</button><button data-s="4">4×</button><button data-s="turbo" data-i18n-title="Без анимации — до финала|No animation — to the end">⚡</button></div>
+      <select class="btn" id="mapSel" data-i18n-title="Карта|Map"></select>
+      <button class="btn on" id="bSound" data-i18n-title="Звук (Web Audio)|Sound (Web Audio)">🔊</button>
+      <button class="btn" id="bMusic" data-i18n-title="Музыка (Web Audio)|Music (Web Audio)">🎵</button>
+      <button class="btn" id="bVoice" data-i18n-title="Голос диктора (Web Speech)|Announcer (Web Speech)">🗣</button>
+      <button class="btn" id="bBet" data-i18n-title="Ставка на победителя|Bet on the winner">🎯</button>
+      <button class="btn" id="bRoom" data-i18n-title="Мультиплеер: комната по ссылке|Multiplayer: room link">👥</button>
+      <button class="btn" id="bVert" data-i18n-title="Вертикальный режим 9:16 и запись видео|Vertical 9:16 mode and recording">🎬 9:16</button>
+      <button class="btn" id="bShare" data-i18n-title="Скопировать ссылку с зерном эпизода|Copy a link with the episode seed">🔗</button>
+      <button class="btn" id="bLang" data-i18n-title="Язык|Language"></button>
+      <button class="btn" id="bReset" data-i18n-title="Новый эпизод|New episode">↻</button>
     </div>
-    <div class="tip" id="tip">Нажмите на страну на карте, чтобы играть за неё.</div>
+    <div class="tip" id="tip"></div>
+
+    <section class="card" id="roomCard">
+      <div class="cap" data-i18n="Комната|Room">Комната</div>
+      <div id="roomBody"></div>
+    </section>
 
     <div class="boards">
-      <div class="board"><div class="cap">Больше всего побед</div><ol id="bWins"></ol></div>
-      <div class="board"><div class="cap">Больше всего земли</div><ol id="bArea"></ol></div>
+      <div class="board"><div class="cap" data-i18n="Больше всего побед|Most wins">Больше всего побед</div><ol id="bWins"></ol></div>
+      <div class="board"><div class="cap" data-i18n="Больше всего земли|Most territory">Больше всего земли</div><ol id="bArea"></ol></div>
     </div>
 
-    <div class="card" id="logCard"><div class="cap" style="margin-bottom:8px">Хроника</div><div id="log"></div></div>
+    <div class="card" id="logCard"><div class="cap" style="margin-bottom:8px" data-i18n="Хроника|Chronicle">Хроника</div><div id="log"></div></div>
 
-    <div class="card" id="statsCard"><div class="cap" style="margin-bottom:8px">Статистика эпизодов</div><div class="stats" id="stats"></div></div>
+    <div class="card" id="statsCard"><div class="cap" style="margin-bottom:8px" data-i18n="Статистика эпизодов|Episode stats">Статистика эпизодов</div><div class="stats" id="stats"></div></div>
 
     <footer>
-      Карта — <a href="https://github.com/topojson/world-atlas" target="_blank" rel="noopener">world-atlas</a> (Natural Earth, TopoJSON) ·
-      Население — <a href="https://datahelpdesk.worldbank.org/knowledgebase/articles/889392" target="_blank" rel="noopener">World Bank API</a> ·
-      Коды — <a href="https://github.com/michaelwittig/node-i18n-iso-countries" target="_blank" rel="noopener">i18n-iso-countries</a> ·
-      Флаги — <a href="https://flagcdn.com" target="_blank" rel="noopener">flagcdn.com</a> ·
-      Кубики — <a href="https://www.random.org" target="_blank" rel="noopener">random.org</a> (запасной — Web Crypto) ·
-      Справка — <a href="https://ru.wikipedia.org/api/rest_v1/" target="_blank" rel="noopener">Wikipedia REST API</a> ·
-      Названия — Intl.DisplayNames · Звук — Web Audio · Голос — Web Speech · Запись — Screen Capture + MediaRecorder
+      <span data-i18n="Данные и API|Data & APIs">Данные и API</span>:
+      <a href="https://github.com/topojson/world-atlas" target="_blank" rel="noopener">world-atlas</a>,
+      <a href="https://github.com/topojson/us-atlas" target="_blank" rel="noopener">us-atlas</a>,
+      <a href="https://github.com/codeforgermany/click_that_hood" target="_blank" rel="noopener">click_that_hood</a> ·
+      <a href="https://datahelpdesk.worldbank.org/knowledgebase/articles/889392" target="_blank" rel="noopener">World Bank API</a> ·
+      <a href="https://query.wikidata.org" target="_blank" rel="noopener">Wikidata SPARQL</a> ·
+      <a href="https://github.com/annexare/Countries" target="_blank" rel="noopener">countries-list</a> ·
+      <a href="https://github.com/michaelwittig/node-i18n-iso-countries" target="_blank" rel="noopener">i18n-iso-countries</a> ·
+      <a href="https://flagcdn.com" target="_blank" rel="noopener">flagcdn</a> + Wikimedia Commons ·
+      <a href="https://www.random.org" target="_blank" rel="noopener">random.org</a> ·
+      <a href="https://ru.wikipedia.org/api/rest_v1/" target="_blank" rel="noopener">Wikipedia REST</a> ·
+      <a href="https://peerjs.com" target="_blank" rel="noopener">PeerJS</a> ·
+      Intl.DisplayNames · Web Audio · Web Speech · Screen Capture + MediaRecorder ·
+      <a href="https://github.com/BaSeVa/bitva-stran" target="_blank" rel="noopener">GitHub</a>
     </footer>
   </aside>
+
+  <div id="intro"><div class="k" id="inK"></div><h1 id="inT"></h1><h2 id="inM"></h2><div class="q" id="inQ"></div><div class="favs" id="inF"></div><div class="c" id="inC"></div></div>
 </div>
 
 <div id="recBar">
-  <button class="btn" id="rPlay">▶ Старт</button>
-  <button class="btn" id="rRec">⏺ Запись</button>
-  <button class="btn" id="rExit">✕ Выйти из 9:16</button>
+  <button class="btn" id="rPlay"></button>
+  <button class="btn" id="rRec" data-i18n="⏺ Запись|⏺ Record">⏺ Запись</button>
+  <button class="btn" id="rExit" data-i18n="✕ Выйти из 9:16|✕ Exit 9:16">✕ Выйти из 9:16</button>
 </div>
 
-<div id="champ"><div class="box">
-  <div class="cap" id="cCap">Чемпион эпизода</div>
+<div class="modal" id="champ"><div class="box">
+  <div class="cap" id="cCap"></div>
   <h2 id="cName"></h2>
-  <img id="cFlag" alt="">
+  <img id="cFlag" class="big" alt="">
   <p id="cStats"></p>
-  <button class="btn primary" id="cAgain">Новый эпизод</button>
+  <div id="cSum"></div>
+  <div class="mrow"><button class="btn" id="cReplay" data-i18n="📊 Таймлапс|📊 Timelapse">📊 Таймлапс</button><button class="btn primary" id="cAgain" data-i18n="Новый эпизод|New episode">Новый эпизод</button></div>
+</div></div>
+
+<div class="modal" id="betModal"><div class="box">
+  <div class="cap" data-i18n="Ставка|Bet">Ставка</div>
+  <h2 style="margin:8px 0 0;font-size:22px" data-i18n="Кто победит в этом эпизоде?|Who will win this episode?">Кто победит в этом эпизоде?</h2>
+  <div id="betList"></div>
+  <div class="mrow"><button class="btn" id="betClose" data-i18n="Закрыть|Close">Закрыть</button></div>
 </div></div>
 
 <script>
@@ -303,33 +389,68 @@ body.vertical.fight .boards{display:none}
 const $ = s => document.querySelector(s);
 const ABORT = Symbol('abort');
 const R_EARTH = 6371.0088;
-const PLAYER_EVERY = 3;        // игрок атакует каждый третий ход
+const PLAYER_EVERY = 3;        // люди атакуют каждый третий ход
 const POP_SHARE = 0.5;         // победитель получает половину населения побеждённого
-const REBEL_CHANCE = 0.04;     // шанс восстания после хода
-const flagSvg = a2 => `https://flagcdn.com/${a2.toLowerCase()}.svg`;
-const flagPng = a2 => `https://flagcdn.com/w160/${a2.toLowerCase()}.png`;
-const ruName = new Intl.DisplayNames(['ru'], {type: 'region'});
-const enName = new Intl.DisplayNames(['en'], {type: 'region'});
-const fmt = n => Math.round(n).toLocaleString('ru-RU');
-const mult = p => p >= 1e9 ? 1.5 : p >= 5e8 ? 1.4 : p >= 1e8 ? 1.3 : p >= 5e7 ? 1.2 : p >= 1e7 ? 1.1 : 1.0;
-const fmtArea = a => a >= 1e6 ? `${(a / 1e6).toFixed(a >= 1e7 ? 0 : 1)} млн км²` : `${Math.round(a / 1e3)} тыс. км²`;
-const plural = (n, one, few, many) => { const m10 = n % 10, m100 = n % 100; return m10 === 1 && m100 !== 11 ? one : m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14) ? few : many; };
+const REBEL_CHANCE = 0.04;     // восстание после хода
+const EVENT_CHANCE = 0.1;      // карточка события перед ходом
+const ALLY_CHANCE = 0.06;      // новый союз после хода
+const BETRAY_CHANCE = 0.15;    // атака на союзника
+const COLLAPSE = 0.2;          // шанс, что при падении империи часть провинций обретёт независимость
+const REMOTE_WAIT = 45000;     // ожидание хода удалённого игрока
 const store = {
   get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch { return d; } },
   set(k, v) { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, JSON.stringify(v)); } catch {} }
 };
 const esc = s => String(s).replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
 
+// ---------- параметры, язык, карта ----------
+const P = new URLSearchParams(location.search);
+const LANG = (P.get('lang') || store.get('geo-lang', 'ru')) === 'en' ? 'en' : 'ru';
+const L = (ru, en) => LANG === 'en' ? en : ru;
+document.documentElement.lang = LANG;
+const MAPS = {
+  world: {ru: 'Мир', en: 'World', kind: 'world', ext: [[-169, 83], [179.9, -57]]},
+  europe: {ru: 'Европа', en: 'Europe', kind: 'world', cont: ['EU'], ext: [[-25, 71], [48, 34]]},
+  asia: {ru: 'Азия', en: 'Asia', kind: 'world', cont: ['AS'], ext: [[25, 56], [150, -11]]},
+  africa: {ru: 'Африка', en: 'Africa', kind: 'world', cont: ['AF'], ext: [[-20, 38], [55, -36]]},
+  americas: {ru: 'Америка', en: 'Americas', kind: 'world', cont: ['NA', 'SA'], ext: [[-170, 72], [-30, -56]]},
+  usa: {ru: 'Штаты США', en: 'US States', kind: 'usa'},
+  russia: {ru: 'Регионы России', en: 'Regions of Russia', kind: 'russia'}
+};
+const MAPKEY = MAPS[P.get('map')] ? P.get('map') : MAPS[store.get('geo-map')] ? store.get('geo-map') : 'world';
+const MAP = MAPS[MAPKEY];
+const MAPNAME = L(MAP.ru, MAP.en);
+const RENDER = P.has('render');
+const ROOM = P.get('room');
+const GUEST = !!ROOM && !RENDER;
+const NOUNS = {
+  world: [['страна', 'страны', 'стран'], ['country', 'countries']],
+  usa: [['штат', 'штата', 'штатов'], ['state', 'states']],
+  russia: [['регион', 'региона', 'регионов'], ['region', 'regions']]
+}[MAP.kind];
+const plural = (n, one, few, many) => { const m10 = n % 10, m100 = n % 100; return m10 === 1 && m100 !== 11 ? one : m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14) ? few : many; };
+const noun = n => LANG === 'en' ? (n === 1 ? NOUNS[1][0] : NOUNS[1][1]) : plural(n, ...NOUNS[0]);
+const nTurns = n => LANG === 'en' ? `${n} turn${n === 1 ? '' : 's'}` : `${n} ${plural(n, 'ход', 'хода', 'ходов')}`;
+const nWins = n => LANG === 'en' ? `${n} win${n === 1 ? '' : 's'}` : `${n} ${plural(n, 'победа', 'победы', 'побед')}`;
+document.querySelectorAll('[data-i18n]').forEach(el => { const [r, e] = el.dataset.i18n.split('|'); el.textContent = L(r, e); });
+document.querySelectorAll('[data-i18n-title]').forEach(el => { const [r, e] = el.dataset.i18nTitle.split('|'); el.title = L(r, e); });
+document.title = L('Битва стран', 'Battle of Nations') + (MAPKEY !== 'world' ? ' — ' + MAPNAME : '');
+
+const fmt = n => Math.round(n).toLocaleString(LANG === 'en' ? 'en-US' : 'ru-RU');
+const fmtArea = a => a >= 1e6 ? L(`${(a / 1e6).toFixed(a >= 1e7 ? 0 : 1)} млн км²`, `${(a / 1e6).toFixed(a >= 1e7 ? 0 : 1)}M km²`) : L(`${Math.round(a / 1e3)} тыс. км²`, `${Math.round(a / 1e3)}K km²`);
+// множитель от населения: для мира — как в видео, для регионов — по квантилям своей карты
+let MT = [[1e9, 1.5], [5e8, 1.4], [1e8, 1.3], [5e7, 1.2], [1e7, 1.1]];
+const mult = p => { for (const [th, m] of MT) if (p >= th) return m; return 1.0; };
+
 // Территории без данных World Bank, но игровые
 const EXTRA_POP = {TWN: 23400000, VAT: 800, ESH: 590000};
-// Спорные территории без ISO-кода присоединяем к стране
 const MERGE_BY_NAME = {'Somaliland': 'SOM', 'N. Cyprus': 'CYP', 'Siachen Glacier': 'IND'};
-// Реальные морские соседства
 const SEA_LINKS = `GBR-FRA GBR-BEL GBR-NLD GBR-ISL ISL-GRL ISL-NOR GRL-CAN DNK-SWE DNK-NOR FIN-EST SWE-LTU ESP-MAR ITA-TUN
 MLT-ITA MLT-LBY CYP-TUR CYP-SYR CYP-GRC EGY-SAU YEM-DJI YEM-ERI BHR-SAU BHR-QAT JPN-KOR JPN-RUS JPN-CHN CHN-KOR TWN-CHN
 TWN-PHL TWN-JPN PHL-IDN PHL-VNM PHL-MYS LKA-IND MDV-IND MDV-LKA SGP-MYS SGP-IDN IDN-AUS PNG-AUS AUS-NZL AUS-TLS NZL-FJI
 FJI-VUT VUT-SLB SLB-PNG NCL-VUT NCL-AUS FJI-TON TON-WSM MDG-MOZ COM-MOZ COM-MDG MUS-MDG SYC-KEN SYC-MDG CPV-SEN STP-GAB
 USA-RUS USA-CUB USA-BHS CUB-MEX CUB-JAM CUB-HTI CUB-BHS JAM-HTI DOM-PRI TTO-VEN BRB-TTO`.split(/\s+/).map(p => p.split('-'));
+const US_FIPS = {'01': 'AL', '02': 'AK', '04': 'AZ', '05': 'AR', '06': 'CA', '08': 'CO', '09': 'CT', '10': 'DE', '11': 'DC', '12': 'FL', '13': 'GA', '15': 'HI', '16': 'ID', '17': 'IL', '18': 'IN', '19': 'IA', '20': 'KS', '21': 'KY', '22': 'LA', '23': 'ME', '24': 'MD', '25': 'MA', '26': 'MI', '27': 'MN', '28': 'MS', '29': 'MO', '30': 'MT', '31': 'NE', '32': 'NV', '33': 'NH', '34': 'NJ', '35': 'NM', '36': 'NY', '37': 'NC', '38': 'ND', '39': 'OH', '40': 'OK', '41': 'OR', '42': 'PA', '44': 'RI', '45': 'SC', '46': 'SD', '47': 'TN', '48': 'TX', '49': 'UT', '50': 'VT', '51': 'VA', '53': 'WA', '54': 'WV', '55': 'WI', '56': 'WY'};
 
 // ---------- loading ----------
 const steps = $('#steps');
@@ -347,6 +468,18 @@ async function getJSON(url, cacheKey, days = 7) {
   const v = await r.json();
   if (cacheKey) store.set(cacheKey, {t: Date.now(), v});
   return v;
+}
+// население, названия и флаги субъектов (US-xx, RU-xxx) из Wikidata
+async function wikidataSubdivisions(prefix) {
+  const q = `SELECT ?iso (MAX(?p) AS ?pop) (SAMPLE(?ru) AS ?ruL) (SAMPLE(?en) AS ?enL) (SAMPLE(?f) AS ?flag) WHERE {
+    ?x wdt:P300 ?iso . FILTER(STRSTARTS(?iso, "${prefix}-"))
+    OPTIONAL { ?x wdt:P1082 ?p } OPTIONAL { ?x wdt:P41 ?f }
+    OPTIONAL { ?x rdfs:label ?ru FILTER(LANG(?ru) = "ru") } OPTIONAL { ?x rdfs:label ?en FILTER(LANG(?en) = "en") }
+    FILTER NOT EXISTS { ?x wdt:P576 ?end } } GROUP BY ?iso`;
+  const j = await getJSON('https://query.wikidata.org/sparql?format=json&query=' + encodeURIComponent(q), 'wd-' + prefix);
+  const out = {};
+  for (const b of j.results.bindings) out[b.iso.value] = {pop: b.pop ? +b.pop.value : 0, ru: b.ruL && b.ruL.value, en: b.enL && b.enL.value, flag: b.flag && b.flag.value.replace(/^http:/, 'https:')};
+  return out;
 }
 
 // ---------- RNG: зерно эпизода (mulberry32) + random.org для кубиков ----------
@@ -371,7 +504,7 @@ const RNG = {
     } catch { this.failed = true; }
   },
   die(offline) {
-    if (S.dice === 'seed') { this.last = 'зерно ' + S.seed; return 1 + Math.floor(rand() * 6); }
+    if (S.dice === 'seed') { this.last = L('зерно ', 'seed ') + S.seed; return 1 + Math.floor(rand() * 6); }
     if (!offline && !this.failed && !this.busy && this.pool.length < 40) {
       this.busy = true; this.refill().finally(() => this.busy = false);
     }
@@ -381,9 +514,39 @@ const RNG = {
   }
 };
 
-// ---------- Sound: Web Audio ----------
+// ---------- звук: синтез Web Audio (живой и офлайн для рендера) ----------
+function env(g, t, a, peak, d) { g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(peak, t + a); g.gain.exponentialRampToValueAtTime(0.0001, t + a + d); }
+const noiseBufs = new WeakMap();
+function noise(c, out, t, dur, freq, peak, type = 'bandpass') {
+  let b = noiseBufs.get(c);
+  if (!b) { b = c.createBuffer(1, c.sampleRate * 1, c.sampleRate); const d = b.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; noiseBufs.set(c, b); }
+  const s = c.createBufferSource(); s.buffer = b;
+  const f = c.createBiquadFilter(); f.type = type; f.frequency.value = freq; f.Q.value = 1.4;
+  const g = c.createGain(); env(g, t, 0.003, peak, dur);
+  s.connect(f).connect(g).connect(out); s.start(t, Math.random() * 0.4); s.stop(t + dur + 0.05);
+}
+function tone(c, out, t, freq, dur, type, peak, a = 0.01) {
+  const o = c.createOscillator(), g = c.createGain();
+  o.type = type; o.frequency.setValueAtTime(freq, t); env(g, t, a, peak, dur);
+  o.connect(g).connect(out); o.start(t); o.stop(t + a + dur + 0.05);
+}
+const FX = {
+  tick: (c, o, t) => tone(c, o, t, 1400, 0.04, 'square', 0.04),
+  dice: (c, o, t) => { for (let i = 0; i < 11; i++) noise(c, o, t + i * 0.08 + Math.random() * 0.03, 0.05, 2200 + Math.random() * 1800, 0.35); },
+  clash: (c, o, t) => { noise(c, o, t, 0.25, 5200, 0.5); [1870, 2630, 3410].forEach(f => tone(c, o, t, f, 0.6, 'triangle', 0.05)); },
+  point: (c, o, t) => tone(c, o, t, 880, 0.12, 'sine', 0.12),
+  wave: (c, o, t) => { const s = c.createOscillator(), g = c.createGain(); s.type = 'sawtooth'; s.frequency.setValueAtTime(90, t); s.frequency.exponentialRampToValueAtTime(320, t + 0.9); env(g, t, 0.05, 0.06, 0.9); s.connect(g).connect(o); s.start(t); s.stop(t + 1.1); },
+  rebel: (c, o, t) => { [196, 233, 196, 262].forEach((f, i) => tone(c, o, t + i * 0.13, f, 0.3, 'square', 0.06)); noise(c, o, t, 0.6, 400, 0.3); },
+  event: (c, o, t) => { [660, 880, 1320].forEach((f, i) => tone(c, o, t + i * 0.07, f, 0.5, 'sine', 0.09)); },
+  ally: (c, o, t) => { [523, 784].forEach((f, i) => tone(c, o, t + i * 0.12, f, 0.5, 'triangle', 0.1)); },
+  betray: (c, o, t) => { [740, 698, 622, 523].forEach((f, i) => tone(c, o, t + i * 0.11, f, 0.25, 'sawtooth', 0.05)); noise(c, o, t + 0.4, 0.3, 300, 0.3); },
+  collapse: (c, o, t) => { noise(c, o, t, 0.9, 120, 0.5, 'lowpass'); tone(c, o, t, 70, 1.0, 'sine', 0.3); },
+  win: (c, o, t) => [523, 659, 784, 1047].forEach((f, i) => tone(c, o, t + i * 0.09, f, 0.35, 'triangle', 0.12)),
+  lose: (c, o, t) => [392, 330, 262].forEach((f, i) => tone(c, o, t + i * 0.16, f, 0.4, 'triangle', 0.12)),
+  fanfare: (c, o, t) => [523, 659, 784, 1047, 784, 1047].forEach((f, i) => tone(c, o, t + i * 0.14, f, i === 5 ? 1.2 : 0.3, 'triangle', 0.14))
+};
 const SFX = {
-  ctx: null, on: true, out: null, rec: null,
+  ctx: null, on: !RENDER, out: null, rec: null,
   ac() {
     if (!this.ctx) {
       this.ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -397,56 +560,72 @@ const SFX = {
     if (!this.rec) { this.rec = c.createMediaStreamDestination(); this.out.connect(this.rec); }
     return this.rec.stream.getAudioTracks();
   },
-  env(g, t, a, peak, d) { g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(peak, t + a); g.gain.exponentialRampToValueAtTime(0.0001, t + a + d); },
-  noise(t, dur, freq, peak) {
-    const c = this.ac(), b = c.createBuffer(1, c.sampleRate * dur, c.sampleRate), d = b.getChannelData(0);
-    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
-    const s = c.createBufferSource(); s.buffer = b;
-    const f = c.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = freq; f.Q.value = 1.4;
-    const g = c.createGain(); this.env(g, t, 0.003, peak, dur);
-    s.connect(f).connect(g).connect(this.out); s.start(t); s.stop(t + dur + 0.05);
+  play(name) {
+    if (RENDER) EV.push({t: Date.now() / 1000, sfx: name});
+    if (!this.on) return;
+    const c = this.ac(); FX[name](c, this.out, c.currentTime);
+  }
+};
+// музыка: секвенсор в ля миноре, темп и плотность растут к финалу
+const MUSIC = {
+  on: !RENDER && store.get('geo-music', false), timer: null, next: 0, step: 0, gain: null,
+  schedule(c, out, t, step, tension) {
+    const bpm = 96 + 44 * tension, s16 = 60 / bpm / 4;
+    const roots = [45, 41, 48, 43], bar = Math.floor(step / 16) % 4, pos = step % 16, root = roots[bar];
+    const hz = m => 440 * Math.pow(2, (m - 69) / 12);
+    if (pos % 4 === 0) { // бочка и бас
+      const k = c.createOscillator(), g = c.createGain(); k.frequency.setValueAtTime(120, t); k.frequency.exponentialRampToValueAtTime(40, t + 0.12); env(g, t, 0.003, 0.5, 0.18); k.connect(g).connect(out); k.start(t); k.stop(t + 0.25);
+      tone(c, out, t, hz(root - 12), s16 * 3, 'sawtooth', 0.07, 0.005);
+    }
+    if (pos === 4 || pos === 12) noise(c, out, t, 0.12, 1800, 0.18 + 0.12 * tension);
+    if (tension > 0.25 && pos % 2 === 1) noise(c, out, t, 0.03, 8000, 0.06, 'highpass');
+    const third = bar === 0 || bar === 3 ? 3 : 4, arp = [0, third, 7, 12, 7, third, 12, 15];
+    if (tension > 0.1 || pos % 2 === 0) tone(c, out, t, hz(root + 12 + arp[pos % 8]), s16 * 0.9, 'triangle', 0.035 + 0.03 * tension, 0.005);
+    if (pos === 0) [0, third, 7].forEach(i => tone(c, out, t, hz(root + 12 + i), s16 * 15, 'sine', 0.025, 0.2));
+    return s16;
   },
-  tone(t, freq, dur, type, peak) {
-    const c = this.ac(), o = c.createOscillator(), g = c.createGain();
-    o.type = type; o.frequency.setValueAtTime(freq, t); this.env(g, t, 0.01, peak, dur);
-    o.connect(g).connect(this.out); o.start(t); o.stop(t + dur + 0.05);
+  tension() { const n = Object.keys(N).length || 1; return Math.max(0, Math.min(1, 1 - (alive().length - 1) / (n - 1))); },
+  start() {
+    if (this.timer || RENDER) return;
+    const c = SFX.ac();
+    this.gain = c.createGain(); this.gain.gain.value = 0.6; this.gain.connect(SFX.out);
+    this.next = c.currentTime + 0.1;
+    this.timer = setInterval(() => { while (this.next < c.currentTime + 0.3) this.next += this.schedule(c, this.gain, this.next, this.step++, this.tension()); }, 80);
   },
-  tick() { if (!this.on) return; const t = this.ac().currentTime; this.tone(t, 1400, 0.04, 'square', 0.04); },
-  dice() { if (!this.on) return; const t = this.ac().currentTime; for (let i = 0; i < 11; i++) this.noise(t + i * 0.08 + Math.random() * 0.03, 0.05, 2200 + Math.random() * 1800, 0.35); },
-  clash() { if (!this.on) return; const t = this.ac().currentTime; this.noise(t, 0.25, 5200, 0.5); [1870, 2630, 3410].forEach(f => this.tone(t, f, 0.6, 'triangle', 0.05)); },
-  point() { if (!this.on) return; const t = this.ac().currentTime; this.tone(t, 880, 0.12, 'sine', 0.12); },
-  wave() { if (!this.on) return; const c = this.ac(), t = c.currentTime, o = c.createOscillator(), g = c.createGain(); o.type = 'sawtooth'; o.frequency.setValueAtTime(90, t); o.frequency.exponentialRampToValueAtTime(320, t + 0.9); this.env(g, t, 0.05, 0.06, 0.9); o.connect(g).connect(this.out); o.start(t); o.stop(t + 1.1); },
-  rebel() { if (!this.on) return; const t = this.ac().currentTime; [196, 233, 196, 262].forEach((f, i) => this.tone(t + i * 0.13, f, 0.3, 'square', 0.06)); this.noise(t, 0.6, 400, 0.3); },
-  win() { if (!this.on) return; const t = this.ac().currentTime; [523, 659, 784, 1047].forEach((f, i) => this.tone(t + i * 0.09, f, 0.35, 'triangle', 0.12)); },
-  lose() { if (!this.on) return; const t = this.ac().currentTime; [392, 330, 262].forEach((f, i) => this.tone(t + i * 0.16, f, 0.4, 'triangle', 0.12)); }
+  stop() { clearInterval(this.timer); this.timer = null; if (this.gain) { this.gain.disconnect(); this.gain = null; } }
 };
 
-// ---------- Voice: Web Speech ----------
+// ---------- голос: Web Speech ----------
 const VOICE = {
   on: false,
   say(text) {
+    if (RENDER) { EV.push({t: Date.now() / 1000, say: text}); return; }
     if (!this.on || !('speechSynthesis' in window)) return;
     speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(text); u.lang = 'ru-RU'; u.rate = 1.08;
-    const v = speechSynthesis.getVoices().find(v => v.lang.startsWith('ru')); if (v) u.voice = v;
+    const u = new SpeechSynthesisUtterance(text); u.lang = L('ru-RU', 'en-US'); u.rate = 1.08;
+    const v = speechSynthesis.getVoices().find(v => v.lang.startsWith(LANG)); if (v) u.voice = v;
     speechSynthesis.speak(u);
   }
 };
 
-// ---------- state ----------
+// ---------- состояние ----------
 const S = { speed: 1, turbo: false, paused: true, stepOnce: false, gen: 0, forced: null, turn: 0, ep: 1,
-  seed: '', rs: 1, dice: store.get('geo-dice', 'random'), player: null, finished: false, choice: undefined, choosing: null, rolled: false };
-let topo, geoms, feats, path, proj, W = 1000, H = 600;
-let N = {};           // iso3 -> nation
-let owner = [];       // geom idx -> iso3 | null
-let orig = [];        // geom idx -> iso3 | null
+  seed: '', rs: 1, dice: store.get('geo-dice', 'random'), player: null, bet: null, finished: false,
+  choice: undefined, choosing: null, rolled: false, tac: {},
+  allies: [], hist: [], diff: [], es: null, remote: {}, hturn: 0, dimKeep: null, hl: [null, null] };
+const EV = window.__events = []; // события для рендера видео
+let topo, OBJ, geoms, feats, path, proj, W = 1000, H = 600;
+let N = {};           // id -> нация (страна, штат, регион)
+let owner = [];       // geom idx -> id | null
+let orig = [];        // geom idx -> исходная нация
 let adj = [];         // geom idx -> [idx]
 let cen = [];         // geom idx -> [lon,lat] главного полигона
 let mainBox = [];     // geom idx -> [[x0,y0],[x1,y1]]
 let playable = [];
-let svg, gZoom, gGeo, defs, bordersPath, hlAtt, hlDef, hlPlayer, zoom, geoSel;
+let svg, gZoom, gGeo, defs, bordersPath, hlAtt, hlDef, hlPlayer, gAlly, gCaps, zoom, geoSel, zk = 1;
 
 const alive = () => Object.values(N).filter(n => n.alive);
+const newEpStats = () => ({rebellions: 0, events: 0, betrayals: 0, collapses: 0, alliances: 0, blowout: null});
 function wait(ms) {
   const g = S.gen;
   return new Promise((res, rej) => {
@@ -460,6 +639,7 @@ function wait(ms) {
     requestAnimationFrame(f);
   });
 }
+const sleep = ms => new Promise(r => setTimeout(r, ms));
 function waitUnpaused() {
   const g = S.gen;
   return new Promise((res, rej) => {
@@ -467,11 +647,16 @@ function waitUnpaused() {
     f();
   });
 }
-// ожидание действия игрока: не зависит от скорости, прерывается новым эпизодом
-function waitUntil(cond) {
-  const g = S.gen;
+// ожидание действия человека: прерывается новым эпизодом; с тайм-аутом возвращает false
+function waitUntil(cond, timeout = 0) {
+  const g = S.gen, t0 = Date.now();
   return new Promise((res, rej) => {
-    const f = () => { if (g !== S.gen) return rej(ABORT); cond() ? res() : setTimeout(f, 50); };
+    const f = () => {
+      if (g !== S.gen) return rej(ABORT);
+      if (cond()) return res(true);
+      if (timeout && Date.now() - t0 > timeout) return res(false);
+      setTimeout(f, 50);
+    };
     f();
   });
 }
@@ -481,66 +666,120 @@ function toast(html, cls = '', ms = 2600) {
   clearTimeout(toastT); toastT = setTimeout(() => t.className = cls, ms);
 }
 
-// ---------- boot ----------
+// ---------- загрузка данных ----------
 async function boot() {
-  const s1 = step('Карта мира — world-atlas (TopoJSON)');
-  const s2 = step('Население — World Bank API');
-  const s3 = step('Коды стран ISO 3166');
-  let pop = {}, codes;
+  const ok = MAP.kind === 'world' ? await loadWorld() : MAP.kind === 'usa' ? await loadUSA() : await loadRussia();
+  if (!ok) return;
+  buildMap();
+  if (!GUEST && !RENDER) {
+    const s5 = step(L('Кубики — random.org', 'Dice — random.org'));
+    await RNG.refill();
+    RNG.failed ? s5.err(L('random.org недоступен — кубики от Web Crypto', 'random.org unavailable — Web Crypto dice')) : s5.ok(L(`Кубики — random.org (${RNG.pool.length} бросков в запасе)`, `Dice — random.org (${RNG.pool.length} rolls cached)`));
+  }
+  setTimeout(() => $('#loading').remove(), RENDER ? 0 : 500);
+  initControls();
+  renderStats();
+
+  if (GUEST) { guestInit(); return; }
+  if (RENDER) { renderInit(); return; }
+  const urlSeed = P.get('seed');
+  const saved = store.get('geo-save-' + MAPKEY);
+  if (urlSeed) { history.replaceState(null, '', location.pathname + `?map=${MAPKEY}&lang=${LANG}`); newEpisode(true, urlSeed); toast(L('Эпизод по ссылке · зерно ', 'Episode from link · seed ') + `<b>${esc(urlSeed)}</b>`); }
+  else if (saved && saved.v === 3 && restore(saved)) toast(L('Эпизод восстановлен — продолжайте с того же хода', 'Episode restored — continue from the same turn'));
+  else newEpisode(!store.get('geo-ep-' + MAPKEY, 0));
+  if (MUSIC.on) document.addEventListener('pointerdown', () => MUSIC.on && MUSIC.start(), {once: true});
+}
+
+async function loadWorld() {
+  const s1 = step(L('Карта мира — world-atlas (TopoJSON)', 'World map — world-atlas (TopoJSON)'));
+  const s2 = step(L('Население — World Bank API', 'Population — World Bank API'));
+  const s3 = step(L('Коды стран ISO 3166', 'ISO 3166 country codes'));
+  const s4 = MAP.cont ? step(L('Континенты — countries-list', 'Continents — countries-list')) : null;
+  let pop = {}, codes, cont = null;
   try {
-    const [t, c, wb] = await Promise.all([
+    const [t, c, wb, cl] = await Promise.all([
       getJSON('https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/countries-50m.json').then(v => (s1.ok(), v)),
       getJSON('https://cdn.jsdelivr.net/npm/i18n-iso-countries@7.14.0/codes.json').then(v => (s3.ok(), v)),
       getJSON('https://api.worldbank.org/v2/country/all/indicator/SP.POP.TOTL?format=json&mrnev=1&per_page=400', 'wb-pop')
-        .then(v => (s2.ok(`Население — World Bank API (${v[1].length} записей, ${v[1][0].date})`), v))
-        .catch(() => { s2.err('World Bank API недоступен — без населения'); return [null, []]; })
+        .then(v => (s2.ok(L(`Население — World Bank API (${v[1].length} записей, ${v[1][0].date})`, `Population — World Bank API (${v[1].length} rows, ${v[1][0].date})`)), v))
+        .catch(() => { s2.err(L('World Bank API недоступен', 'World Bank API unavailable')); return [null, []]; }),
+      MAP.cont ? getJSON('https://cdn.jsdelivr.net/npm/countries-list@3.1.1/countries.min.json', 'countries-list').then(v => (s4.ok(), v)) : null
     ]);
-    topo = t; codes = c;
+    topo = t; codes = c; cont = cl;
     for (const r of wb[1] || []) if (r.value != null) pop[r.countryiso3code] = r.value;
-  } catch (e) {
-    s1.err('Не удалось загрузить карту: ' + e.message);
-    return;
-  }
-  Object.assign(pop, Object.fromEntries(Object.entries(EXTRA_POP).filter(([k]) => pop[k] == null)));
-  const s4 = step('Флаги — flagcdn.com, названия — Intl.DisplayNames');
-  buildData(codes, pop);
-  buildMap();
-  s4.ok();
-  const s5 = step('Кубики — random.org');
-  await RNG.refill();
-  RNG.failed ? s5.err('random.org недоступен — кубики от Web Crypto') : s5.ok(`Кубики — random.org (${RNG.pool.length} бросков в запасе)`);
-  setTimeout(() => $('#loading').remove(), 500);
-  renderStats();
-
-  const urlSeed = new URLSearchParams(location.search).get('seed');
-  const saved = store.get('geo-save');
-  if (urlSeed) { history.replaceState(null, '', location.pathname); newEpisode(true, urlSeed); toast(`Эпизод по ссылке · зерно <b>${esc(urlSeed)}</b>`); }
-  else if (saved && saved.v === 2 && restore(saved)) toast('Эпизод восстановлен — продолжайте с того же хода');
-  else newEpisode(!store.get('geo-ep', 0));
-}
-
-function buildData(codes, pop) {
+  } catch (e) { s1.err(L('Не удалось загрузить карту: ', 'Could not load the map: ') + e.message); return false; }
+  for (const [k, v] of Object.entries(EXTRA_POP)) if (pop[k] == null) pop[k] = v;
   const byNum = {};
   for (const [a2, a3, num] of codes) byNum[num] = {a2, a3};
-  geoms = topo.objects.countries.geometries.filter(g => g.id !== '010'); // без Антарктиды
-  topo.objects.countries.geometries = geoms;
-  const merges = [];
-  geoms.forEach((g, i) => {
-    g.idx = i;
+  const names = new Intl.DisplayNames([LANG], {type: 'region'}), en = new Intl.DisplayNames(['en'], {type: 'region'});
+  buildData('countries', g => g.id !== '010', g => {
     const nm = g.properties.name;
     let c = byNum[g.id];
     if (!c && nm === 'Kosovo') c = {a2: 'XK', a3: 'XKX'};
-    if (!c && MERGE_BY_NAME[nm]) { merges.push([i, MERGE_BY_NAME[nm]]); orig[i] = null; return; }
-    if (!c || pop[c.a3] == null) { orig[i] = null; return; }
-    if (!N[c.a3]) N[c.a3] = { iso3: c.a3, iso2: c.a2, name: ruName.of(c.a2) || nm, en: enName.of(c.a2) || nm, pop0: pop[c.a3], geoms: [] };
-    N[c.a3].geoms.push(i);
-    orig[i] = c.a3;
+    if (!c && MERGE_BY_NAME[nm]) return {merge: MERGE_BY_NAME[nm]};
+    if (!c || pop[c.a3] == null) return null;
+    if (MAP.cont) { const k = cont[c.a2] && cont[c.a2].continent; if (!MAP.cont.includes(k)) return null; }
+    const a = c.a2.toLowerCase();
+    return {id: c.a3, name: names.of(c.a2) || nm, en: en.of(c.a2) || nm, pop0: pop[c.a3], flag: `https://flagcdn.com/${a}.svg`, small: `https://flagcdn.com/w160/${a}.png`};
   });
-  for (const [i, a3] of merges) if (N[a3]) { N[a3].geoms.push(i); orig[i] = a3; }
+  return true;
+}
+async function loadUSA() {
+  const s1 = step(L('Карта штатов — us-atlas (TopoJSON)', 'States map — us-atlas (TopoJSON)'));
+  const s2 = step(L('Население, названия и флаги — Wikidata SPARQL', 'Population, names and flags — Wikidata SPARQL'));
+  let wd;
+  try {
+    [topo, wd] = await Promise.all([
+      getJSON('https://cdn.jsdelivr.net/npm/us-atlas@3.0.1/states-10m.json').then(v => (s1.ok(), v)),
+      wikidataSubdivisions('US').then(v => (s2.ok(), v))
+    ]);
+  } catch (e) { s1.err(L('Не удалось загрузить данные: ', 'Could not load data: ') + e.message); return false; }
+  buildData('states', g => !!US_FIPS[g.id], g => regionNation('US-' + US_FIPS[g.id], wd['US-' + US_FIPS[g.id]] || {}, g.properties.name));
+  quantileMult();
+  return true;
+}
+async function loadRussia() {
+  const s1 = step(L('Карта регионов — click_that_hood (TopoJSON)', 'Regions map — click_that_hood (TopoJSON)'));
+  const s2 = step(L('Население, названия и флаги — Wikidata SPARQL', 'Population, names and flags — Wikidata SPARQL'));
+  let wd;
+  try {
+    [topo, wd] = await Promise.all([
+      getJSON('data/russia-regions.topo.json').then(v => (s1.ok(), v)),
+      wikidataSubdivisions('RU').then(v => (s2.ok(), v))
+    ]);
+  } catch (e) { s1.err(L('Не удалось загрузить данные: ', 'Could not load data: ') + e.message); return false; }
+  buildData('regions', () => true, g => regionNation(g.id, wd[g.id] || {}, g.properties.name));
+  quantileMult();
+  return true;
+}
+function regionNation(iso, w, fallback) {
+  const flag = w.flag || '';
+  return {id: iso, name: (LANG === 'en' ? w.en : w.ru) || fallback, en: w.en || fallback, pop0: w.pop || 1e5,
+    flag: flag ? flag + '?width=480' : '', small: flag ? flag + '?width=120' : ''};
+}
+function quantileMult() {
+  const pops = Object.values(N).map(n => n.pop0).sort((a, b) => b - a), q = f => pops[Math.min(pops.length - 1, Math.floor(pops.length * f))];
+  MT = [[q(0.02), 1.5], [q(0.06), 1.4], [q(0.15), 1.3], [q(0.35), 1.2], [q(0.6), 1.1]];
+}
+
+function buildData(objKey, keep, resolve) {
+  OBJ = topo.objects[objKey];
+  geoms = OBJ.geometries.filter(keep);
+  OBJ.geometries = geoms;
+  const merges = [];
+  geoms.forEach((g, i) => {
+    g.idx = i;
+    const r = resolve(g);
+    if (!r) { orig[i] = null; return; }
+    if (r.merge) { merges.push([i, r.merge]); orig[i] = null; return; }
+    if (!N[r.id]) N[r.id] = Object.assign({iso3: r.id, geoms: []}, r);
+    N[r.id].geoms.push(i);
+    orig[i] = r.id;
+  });
+  for (const [i, id] of merges) if (N[id]) { N[id].geoms.push(i); orig[i] = id; }
   playable = geoms.map(g => g.idx).filter(i => orig[i]);
 
-  // центр главного полигона
-  feats = topojson.feature(topo, topo.objects.countries).features;
+  feats = topojson.feature(topo, OBJ).features;
   feats.forEach((f, i) => {
     f.idx = i;
     let main = f.geometry;
@@ -558,11 +797,11 @@ function buildData(codes, pop) {
     n.mainGeom = n.geoms.reduce((a, b) => feats[b].areaKm > feats[a].areaKm ? b : a);
   }
 
-  // соседи: сухопутные границы + реальные морские связи + запасные связи для изолированных островов
+  // соседи: сухопутные границы + реальные морские связи + запасные связи для изолированных
   const nb = topojson.neighbors(geoms);
   adj = nb.map((l, i) => orig[i] ? l.filter(j => orig[j] && orig[j] !== orig[i]) : []);
   const link = (i, j) => { if (!adj[i].includes(j)) adj[i].push(j); if (!adj[j].includes(i)) adj[j].push(i); };
-  for (const [a, b] of SEA_LINKS) if (N[a] && N[b]) link(N[a].mainGeom, N[b].mainGeom);
+  if (MAP.kind === 'world') for (const [a, b] of SEA_LINKS) if (N[a] && N[b]) link(N[a].mainGeom, N[b].mainGeom);
   for (const n of Object.values(N)) {
     if (n.geoms.some(i => adj[i].length)) continue;
     const near = playable.filter(j => orig[j] !== n.iso3)
@@ -572,15 +811,19 @@ function buildData(codes, pop) {
 }
 
 function buildMap() {
-  proj = d3.geoMercator();
-  proj.fitWidth(W, {type: 'MultiPoint', coordinates: [[-169, 83], [179.9, -57]]});
-  const b = d3.geoPath(proj).bounds({type: 'MultiPoint', coordinates: [[-169, 83], [179.9, -57]]});
-  H = Math.round(b[1][1] - b[0][1]);
-  proj.translate([proj.translate()[0], proj.translate()[1] - b[0][1]]);
+  const fc = {type: 'FeatureCollection', features: feats.filter((f, i) => orig[i])};
+  if (MAP.kind === 'usa') proj = d3.geoAlbersUsa().fitWidth(W, fc);
+  else if (MAP.kind === 'russia') proj = d3.geoConicEqualArea().rotate([-100, 0]).parallels([52, 64]).fitWidth(W, fc);
+  else proj = d3.geoMercator().fitWidth(W, {type: 'MultiPoint', coordinates: MAP.ext});
+  const pad = MAP.kind === 'world' ? 0 : 10;
+  const b = d3.geoPath(proj).bounds(MAP.kind === 'world' ? {type: 'MultiPoint', coordinates: MAP.ext} : fc);
+  H = Math.round(b[1][1] - b[0][1] + pad * 2);
+  proj.translate([proj.translate()[0], proj.translate()[1] - b[0][1] + pad]);
   path = d3.geoPath(proj);
-  // рамка флага по сферическим границам: у пересекающих 180° меридиан (Россия, Фиджи) берём западную часть до 180°
+  // рамка флага: в мире — по сферическим границам (Россия и Фиджи пересекают 180°), в регионах — по проекции
   feats.forEach((f, i) => {
     if (!f.main) { mainBox[i] = [[0, 0], [0, 0]]; return; }
+    if (MAP.kind !== 'world') { mainBox[i] = path.bounds(f.main); return; }
     const [[lo0, la0], [lo1, la1]] = d3.geoBounds(f.main);
     const [x0, y0] = proj([lo0, Math.min(la1, 83)]), [x1, y1] = proj([lo0 > lo1 ? 179.9 : lo1, Math.max(la0, -57)]);
     mainBox[i] = [[x0, y0], [x1, y1]];
@@ -595,53 +838,68 @@ function buildMap() {
     .attr('d', path)
     .on('click', (ev, d) => onGeoClick(d.idx));
   bordersPath = gZoom.append('path').attr('id', 'borders');
+  gAlly = gZoom.append('g').attr('id', 'allyLines');
   hlPlayer = gZoom.append('path').attr('id', 'hlPlayer');
   hlDef = gZoom.append('path').attr('id', 'hlDef');
   hlAtt = gZoom.append('path').attr('id', 'hlAtt');
+  gCaps = gZoom.append('g').attr('id', 'caps');
   zoom = d3.zoom().scaleExtent([1, 14]).translateExtent([[-W * 0.2, -H * 0.2], [W * 1.2, H * 1.2]])
-    .on('zoom', e => gZoom.attr('transform', e.transform));
+    .on('zoom', e => { gZoom.attr('transform', e.transform); zk = e.transform.k; gCaps.selectAll('text').attr('transform', d => `translate(${d.x},${d.y}) scale(${1 / zk})`); });
   svg.call(zoom).on('dblclick.zoom', null);
 }
 
-// ---------- rendering ----------
-function territoryBox(n) {
+// ---------- отрисовка ----------
+function territoryBox(n, terr = n.terr) {
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
-  for (const i of n.terr) { const [[a, b], [c, d]] = mainBox[i]; x0 = Math.min(x0, a); y0 = Math.min(y0, b); x1 = Math.max(x1, c); y1 = Math.max(y1, d); }
+  for (const i of terr) { const [[a, b], [c, d]] = mainBox[i]; x0 = Math.min(x0, a); y0 = Math.min(y0, b); x1 = Math.max(x1, c); y1 = Math.max(y1, d); }
   return [[x0, y0], [x1, y1]];
 }
-const unionBox = isos => {
-  const bs = isos.map(i => territoryBox(N[i]));
+const boxOf = idxs => territoryBox(null, idxs);
+const unionBox = ids => {
+  const bs = ids.map(i => territoryBox(N[i]));
   return [[d3.min(bs, b => b[0][0]), d3.min(bs, b => b[0][1])], [d3.max(bs, b => b[1][0]), d3.max(bs, b => b[1][1])]];
 };
-// флаг растянут на всю территорию страны (рамка всех её земель)
-function updatePattern(n) {
-  if (!n.terr.size) return;
-  const [[x0, y0], [x1, y1]] = territoryBox(n);
+// флаг растянут на всю территорию нации
+function updatePattern(n, terr = n.terr) {
+  if (!terr.size) return;
+  const [[x0, y0], [x1, y1]] = territoryBox(n, terr);
   let p = defs.select('#p-' + n.iso3);
   if (p.empty()) {
     p = defs.append('pattern').attr('id', 'p-' + n.iso3).attr('patternUnits', 'userSpaceOnUse');
     p.append('rect').attr('fill', '#3a4560');
-    p.append('image').attr('href', flagSvg(n.iso2)).attr('preserveAspectRatio', 'none');
+    if (n.flag) p.append('image').attr('href', n.flag).attr('preserveAspectRatio', 'none');
   }
   const w = Math.max(x1 - x0, 1), h = Math.max(y1 - y0, 1);
   p.attr('x', x0).attr('y', y0).attr('width', w).attr('height', h);
   p.select('rect').attr('width', w).attr('height', h);
   p.select('image').attr('width', w).attr('height', h);
 }
-function paint(idxs) {
+function paint(idxs, own = owner) {
   const set = idxs ? new Set(idxs) : null;
-  geoSel.filter((d, i) => (!set || set.has(i)) && owner[i]).attr('fill', d => `url(#p-${owner[d.idx]})`);
+  geoSel.filter((d, i) => (!set || set.has(i)) && own[i]).attr('fill', d => `url(#p-${own[d.idx]})`);
 }
-function updateBorders() {
-  bordersPath.attr('d', path(topojson.mesh(topo, topo.objects.countries, (a, b) => a === b || owner[a.idx] !== owner[b.idx])));
+function updateBorders(own = owner) {
+  bordersPath.attr('d', path(topojson.mesh(topo, OBJ, (a, b) => a === b || own[a.idx] !== own[b.idx])));
 }
 function setDim(on, keep = []) {
+  S.dimKeep = on ? keep : null;
   const k = new Set(keep);
   geoSel.classed('dim', (d, i) => on && !k.has(owner[i]));
 }
-const outline = iso => iso && N[iso].terr.size ? path(topojson.merge(topo, [...N[iso].terr].map(i => geoms[i]))) : null;
-function highlight(att, def) { hlAtt.attr('d', outline(att)); hlDef.attr('d', outline(def)); }
-function highlightPlayer() { hlPlayer.attr('d', S.player && N[S.player].alive ? outline(S.player) : null); }
+const outline = id => id && N[id] && N[id].terr.size ? path(topojson.merge(topo, [...N[id].terr].map(i => geoms[i]))) : null;
+function highlight(att, def) { S.hl = [att || null, def || null]; hlAtt.attr('d', outline(att)); hlDef.attr('d', outline(def)); }
+function highlightPlayer() { hlPlayer.attr('d', S.player && N[S.player] && N[S.player].alive ? outline(S.player) : null); }
+const capPt = n => { const p = proj(cen[n.mainGeom]); return p ? {x: p[0], y: p[1]} : {x: -99, y: -99}; };
+const homes = n => new Set([...n.terr].map(i => orig[i])).size;
+// столицы империй и линии союзов
+function renderMarks() {
+  const caps = alive().filter(n => homes(n) > 1 || n.iso3 === S.player || S.remote[n.iso3]).map(n => Object.assign({id: n.iso3}, capPt(n)));
+  gCaps.selectAll('text').data(caps, d => d.id).join('text').text('★')
+    .attr('transform', d => `translate(${d.x},${d.y}) scale(${1 / zk})`);
+  const lines = S.allies.filter(a => N[a.a] && N[a.b] && N[a.a].alive && N[a.b].alive).map(a => ({id: a.a + a.b, p: capPt(N[a.a]), q: capPt(N[a.b])}));
+  gAlly.selectAll('line').data(lines, d => d.id).join('line')
+    .attr('x1', d => d.p.x).attr('y1', d => d.p.y).attr('x2', d => d.q.x).attr('y2', d => d.q.y);
+}
 function camera(box, dur) {
   let t;
   if (!box) t = d3.zoomIdentity;
@@ -655,7 +913,8 @@ function camera(box, dur) {
 }
 // волна захвата: флаг победителя заливает землю проигравшего от стороны победителя
 async function captureWave(moved, w, from) {
-  const [[l0, l1], [l2, l3]] = (() => { const t = {terr: new Set(moved)}; return territoryBox(t); })();
+  if (!moved.length) return;
+  const [[l0, l1], [l2, l3]] = boxOf(moved);
   const cx = (from[0][0] + from[1][0]) / 2, cy = (from[0][1] + from[1][1]) / 2;
   const corners = [[l0, l1], [l2, l1], [l0, l3], [l2, l3]].map(([x, y]) => Math.hypot(x - cx, y - cy));
   const nx = Math.max(l0, Math.min(cx, l2)), ny = Math.max(l1, Math.min(cy, l3));
@@ -665,18 +924,18 @@ async function captureWave(moved, w, from) {
   const circle = clip.append('circle').attr('cx', cx).attr('cy', cy).attr('r', r0);
   const ov = gZoom.insert('g', '#borders').attr('clip-path', `url(#${id})`);
   ov.selectAll('path').data(moved.map(i => feats[i])).join('path').attr('d', path).attr('fill', `url(#p-${w.iso3})`);
-  SFX.wave();
+  SFX.play('wave');
   await circle.transition().duration(1100 / S.speed).ease(d3.easeCubicInOut).attr('r', r1).end().catch(() => {});
   paint(moved);
   ov.remove(); clip.remove();
 }
 captureWave.n = 0;
+function flash(idxs) { geoSel.filter((d, i) => idxs.includes(i)).classed('flash', false).each(function () { void this.getBBox(); }).classed('flash', true); }
 
-// ---------- panel ----------
-const side = id => { const el = $(id); return { el, img: el.querySelector('img'), name: el.querySelector('.name'), pop: el.querySelector('.pop'), mult: el.querySelector('.mult'), role: el.querySelector('.role') }; };
+// ---------- панель ----------
+const side = id => { const el = $(id); return { el, img: el.querySelector('img'), name: el.querySelector('.name'), pop: el.querySelector('.pop'), mult: el.querySelector('.mult'), role: el.querySelector('.role'), tags: el.querySelector('.tags') }; };
 const sA = side('#sA'), sD = side('#sD');
 const PIPS = {1: [4], 2: [0, 8], 3: [0, 4, 8], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8]};
-// поворот куба [rx, ry], при котором грань v смотрит на зрителя
 const ORIENT = {1: [0, 0], 2: [90, 0], 3: [0, -90], 4: [0, 90], 5: [-90, 0], 6: [0, 180]};
 function makeDice(col) {
   col.innerHTML = '';
@@ -703,14 +962,17 @@ function setDie(d, v, mode = 'snap') {
 const diceA = makeDice($('#dA')), diceD = makeDice($('#dD'));
 const arrs = [0, 1, 2].map(() => { const a = document.createElement('div'); a.className = 'arr'; $('#arr').append(a); return a; });
 
+const isHuman = id => !!id && (id === S.player || !!S.remote[id]);
+const humanName = id => id === S.player ? L('вы', 'you') : S.remote[id] ? L('игрок', 'player') : '';
 function setSide(s, n, role) {
-  s.el.className = 'side' + (n && n.iso3 === S.player ? ' me' : '');
-  s.role.textContent = role;
+  s.el.className = 'side' + (n && isHuman(n.iso3) ? ' me' : '');
+  s.role.textContent = role + (n && isHuman(n.iso3) ? ' · ' + humanName(n.iso3) : '');
+  s.tags.textContent = '';
   if (!n) { s.img.removeAttribute('src'); s.img.style.visibility = 'hidden'; s.name.textContent = ''; s.pop.textContent = ''; s.mult.textContent = ''; return; }
-  s.img.style.visibility = 'visible'; s.img.src = flagPng(n.iso2); s.name.textContent = n.name;
+  s.img.style.visibility = 'visible'; s.img.src = n.small; s.name.textContent = n.name;
 }
 function resetBattle() {
-  setSide(sA, null, 'Атакующий'); setSide(sD, null, 'Защитник');
+  setSide(sA, null, L('Атакующий', 'Attacker')); setSide(sD, null, L('Защитник', 'Defender'));
   $('#vs').className = 'vs'; $('#duel').className = 'duel'; $('#calc').innerHTML = ''; $('#rngSrc').textContent = '';
   $('#choose').classList.remove('on'); $('#rollRow').classList.remove('on');
   for (const p of ['#pA', '#pD']) { $(p).className = 'pts'; $(p + ' b').textContent = '0'; }
@@ -720,67 +982,75 @@ function resetBattle() {
 const setFight = on => document.body.classList.toggle('fight', on);
 function renderTitle() {
   const n = alive().length;
-  $('#title').textContent = `${n} ${plural(n, 'страна', 'страны', 'стран')} в битве`;
+  $('#title').textContent = `${n} ${noun(n)} ${L('в битве', 'in battle')}`;
   $('#turnN').textContent = S.turn;
-  $('#ep').textContent = 'Эп. ' + String(S.ep).padStart(2, '0');
+  $('#ep').innerHTML = `${esc(MAPNAME)}<br>${L('Эп.', 'Ep.')} ${String(S.ep).padStart(2, '0')}`;
+  if (RENDER) EV.push({t: Date.now() / 1000, alive: n});
 }
 function renderHud() {
-  $('#rngName').textContent = S.dice === 'seed' ? 'по зерну' : (RNG.failed ? 'Web Crypto' : 'random.org');
+  $('#rngName').textContent = S.dice === 'seed' ? L('по зерну', 'by seed') : (RNG.failed ? 'Web Crypto' : 'random.org');
   const pc = $('#playerChip');
-  if (S.player) {
+  if (S.player && N[S.player]) {
     const n = N[S.player];
-    pc.classList.add('on'); pc.querySelector('img').src = flagPng(n.iso2);
-    pc.querySelector('b').textContent = n.name + (n.alive ? '' : ' (выбыла)');
-    $('#tip').textContent = `Вы атакуете каждый ${PLAYER_EVERY}-й ход и сами бросаете кубики.`;
-  } else { pc.classList.remove('on'); $('#tip').textContent = 'Нажмите на страну на карте, чтобы играть за неё.'; }
-  highlightPlayer();
+    pc.classList.add('on'); pc.querySelector('img').src = n.small;
+    pc.querySelector('b').textContent = n.name + (n.alive ? '' : L(' (выбыла)', ' (out)'));
+    $('#tip').textContent = L(`Вы атакуете каждый ${PLAYER_EVERY}-й ход, выбираете тактику и сами бросаете кубики.`, `You attack every ${PLAYER_EVERY}rd turn, pick a tactic and roll the dice yourself.`);
+  } else { pc.classList.remove('on'); $('#tip').textContent = L('Нажмите на страну на карте, чтобы играть за неё.', 'Click a country on the map to play as it.'); }
+  const bc = $('#betChip');
+  if (S.bet && N[S.bet]) { bc.classList.add('on'); bc.querySelector('img').src = N[S.bet].small; bc.querySelector('b').textContent = N[S.bet].name + (N[S.bet].alive ? '' : ' ✗'); }
+  else bc.classList.remove('on');
+  highlightPlayer(); renderMarks();
 }
 function boardRow(n, i, v) {
-  return `<li data-iso="${n.iso3}" class="${n.iso3 === S.player ? 'me' : ''}"><span class="n">${i + 1}</span><img src="${flagPng(n.iso2)}" alt=""><span class="t">${esc(n.name)}</span><span class="v">${v}</span></li>`;
+  return `<li data-iso="${n.iso3}" class="${isHuman(n.iso3) ? 'me' : ''} ${n.iso3 === S.bet ? 'bet' : ''}"><span class="n">${i + 1}</span><img src="${n.small}" alt=""><span class="t">${esc(n.name)}</span><span class="v">${v}</span></li>`;
 }
 function renderBoards() {
-  const all = Object.values(N);
-  const wins = [...all].sort((a, b) => b.wins - a.wins || b.area - a.area).slice(0, 5);
+  const wins = Object.values(N).sort((a, b) => b.wins - a.wins || b.area - a.area).slice(0, 5);
   const area = alive().sort((a, b) => b.area - a.area).slice(0, 5);
   $('#bWins').innerHTML = wins.map((n, i) => boardRow(n, i, n.wins)).join('');
   $('#bArea').innerHTML = area.map((n, i) => boardRow(n, i, fmtArea(n.area))).join('');
 }
-const fl = n => `<img src="${flagPng(n.iso2)}" alt="">`;
+const fl = n => `<img src="${n.small}" alt="">`;
 function logLine(html, cls = '') {
   const d = document.createElement('div'); d.className = cls; d.innerHTML = html;
   const log = $('#log'); log.prepend(d);
   while (log.children.length > 60) log.lastChild.remove();
 }
 function logBattle(w, l, ptsW, ptsL, attWon) {
-  logLine(`<span>${S.turn}.</span>${fl(w)}<b>${esc(w.name)}</b> ${attWon ? 'захватывает' : 'отбивается от'} ${fl(l)}${esc(l.name)}<span class="sc">${ptsW.toFixed(1)} : ${ptsL.toFixed(1)}</span>`);
+  logLine(`<span>${S.turn}.</span>${fl(w)}<b>${esc(w.name)}</b> ${attWon ? L('захватывает', 'conquers') : L('отбивается от', 'repels')} ${fl(l)}${esc(l.name)}<span class="sc">${ptsW.toFixed(1)} : ${ptsL.toFixed(1)}</span>`);
 }
-$('aside').addEventListener('click', e => { const li = e.target.closest('li[data-iso]'); if (li) showInfo(N[li.dataset.iso].geoms[0]); });
 
-// ---------- статистика эпизодов ----------
-const STATS0 = {episodes: 0, champs: {}, longest: null, blowout: null, rebellions: 0, playerWins: 0};
-const stats = () => Object.assign({}, STATS0, store.get('geo-stats', {}));
+// ---------- статистика ----------
+const STATS0 = {episodes: 0, champs: {}, longest: null, blowout: null, rebellions: 0, playerWins: 0, betsTotal: 0, betsWon: 0};
+const stats = () => Object.assign({}, STATS0, store.get('geo-stats-' + MAPKEY, {}));
+const saveStats = st => { if (!RENDER && !GUEST) store.set('geo-stats-' + MAPKEY, st); };
 function noteBlowout(w, l, pw, pl) {
-  const st = stats(), m = pw - pl;
-  if (!st.blowout || m > st.blowout.m) { st.blowout = {m, w: w.iso3, l: l.iso3, pw, pl, ep: S.ep}; store.set('geo-stats', st); }
+  const m = pw - pl, b = {m, w: w.iso3, l: l.iso3, pw, pl, ep: S.ep};
+  if (!S.es.blowout || m > S.es.blowout.m) S.es.blowout = b;
+  const st = stats();
+  if (!st.blowout || m > st.blowout.m) { st.blowout = b; saveStats(st); }
 }
+const nm = id => N[id] ? `${fl(N[id])} ${esc(N[id].name)}` : esc(id);
 function renderStats() {
   const st = stats();
-  const nm = iso => N[iso] ? `${fl(N[iso])} ${esc(N[iso].name)}` : iso;
   const champs = Object.entries(st.champs).sort((a, b) => b[1] - a[1]).slice(0, 5);
   $('#stats').innerHTML = `
-    <div><div class="k">Эпизодов сыграно</div><div class="v">${st.episodes}${st.playerWins ? ` · ваших побед: ${st.playerWins}` : ''}</div>
-      <div class="k" style="margin-top:8px">Восстаний</div><div class="v">${st.rebellions}</div></div>
-    <div><div class="k">Чаще всех чемпион</div><div class="v">${champs.length ? `<ol>${champs.map(([i, c]) => `<li>${nm(i)} — ${c}</li>`).join('')}</ol>` : '—'}</div></div>
-    <div><div class="k">Самый долгий эпизод</div><div class="v">${st.longest ? `${st.longest.turns} ${plural(st.longest.turns, "ход", "хода", "ходов")} · ${nm(st.longest.w)} · эп. ${st.longest.ep}` : '—'}</div></div>
-    <div><div class="k">Самый крупный разгром</div><div class="v">${st.blowout ? `${nm(st.blowout.w)} ${st.blowout.pw.toFixed(1)} : ${st.blowout.pl.toFixed(1)} ${nm(st.blowout.l)}` : '—'}</div></div>`;
+    <div><div class="k">${L('Эпизодов сыграно', 'Episodes played')}</div><div class="v">${st.episodes}${st.playerWins ? L(` · ваших побед: ${st.playerWins}`, ` · your wins: ${st.playerWins}`) : ''}</div>
+      <div class="k" style="margin-top:8px">${L('Восстаний', 'Rebellions')}</div><div class="v">${st.rebellions}</div>
+      <div class="k" style="margin-top:8px">${L('Ставки', 'Bets')}</div><div class="v">${st.betsWon} / ${st.betsTotal}</div></div>
+    <div><div class="k">${L('Чаще всех чемпион', 'Most frequent champion')}</div><div class="v">${champs.length ? `<ol>${champs.map(([i, c]) => `<li>${nm(i)} — ${c}</li>`).join('')}</ol>` : '—'}</div></div>
+    <div><div class="k">${L('Самый долгий эпизод', 'Longest episode')}</div><div class="v">${st.longest ? `${nTurns(st.longest.turns)} · ${nm(st.longest.w)} · ${L('эп.', 'ep.')} ${st.longest.ep}` : '—'}</div></div>
+    <div><div class="k">${L('Самый крупный разгром', 'Biggest blowout')}</div><div class="v">${st.blowout ? `${nm(st.blowout.w)} ${st.blowout.pw.toFixed(1)} : ${st.blowout.pl.toFixed(1)} ${nm(st.blowout.l)}` : '—'}</div></div>`;
 }
 
 // ---------- сохранение ----------
 function save() {
-  if (S.finished) { store.set('geo-save', null); return; }
-  store.set('geo-save', {
-    v: 2, seed: S.seed, rs: S.rs, ep: S.ep, turn: S.turn, dice: S.dice, player: S.player, owner,
-    nat: Object.fromEntries(Object.values(N).map(n => [n.iso3, [n.alive ? 1 : 0, Math.round(n.pop), n.wins]])),
+  if (RENDER || GUEST) return;
+  if (S.finished) { store.set('geo-save-' + MAPKEY, null); return; }
+  store.set('geo-save-' + MAPKEY, {
+    v: 3, seed: S.seed, rs: S.rs, ep: S.ep, turn: S.turn, dice: S.dice, player: S.player, bet: S.bet, owner,
+    allies: S.allies, hist: S.hist, es: S.es,
+    nat: Object.fromEntries(Object.values(N).map(n => [n.iso3, [n.alive ? 1 : 0, Math.round(n.pop), n.wins, Math.round(n.peak), n.revived ? 1 : 0, n.winsAfter || 0, n.bonus || 0, n.skip ? 1 : 0]])),
     log: [...$('#log').children].slice(0, 40).map(d => [d.className, d.innerHTML])
   });
 }
@@ -788,13 +1058,13 @@ function restore(sv) {
   try {
     if (!Array.isArray(sv.owner) || sv.owner.length !== orig.length) return false;
     S.gen++;
-    Object.assign(S, {seed: sv.seed, rs: sv.rs, ep: sv.ep, turn: sv.turn, dice: sv.dice, player: sv.player && N[sv.player] ? sv.player : null, forced: null, finished: false});
+    Object.assign(S, {seed: sv.seed, rs: sv.rs, ep: sv.ep, turn: sv.turn, dice: sv.dice, player: sv.player && N[sv.player] ? sv.player : null,
+      bet: sv.bet && N[sv.bet] ? sv.bet : null, forced: null, finished: false, allies: sv.allies || [], hist: sv.hist || [], diff: [], es: sv.es || newEpStats()});
     owner = sv.owner.map((o, i) => o && N[o] ? o : orig[i]);
     defs.selectAll('pattern').remove();
     for (const n of Object.values(N)) {
-      const [a, p, w] = sv.nat[n.iso3] || [1, n.pop0, 0];
-      n.alive = !!a; n.pop = p; n.wins = w;
-      n.terr = new Set(); n.area = 0;
+      const [a, p, w, pk, rv, wa, bo, sk] = sv.nat[n.iso3] || [1, n.pop0, 0, n.area0, 0, 0, 0, 0];
+      Object.assign(n, {alive: !!a, pop: p, wins: w, peak: pk || n.area0, revived: !!rv, winsAfter: wa, bonus: bo, skip: !!sk, terr: new Set(), area: 0});
     }
     owner.forEach((o, i) => { if (o) { N[o].terr.add(i); N[o].area += feats[i].areaKm; } });
     for (const n of Object.values(N)) { if (!n.terr.size) n.alive = false; updatePattern(n); }
@@ -805,17 +1075,18 @@ function restore(sv) {
   } catch (e) { console.error(e); return false; }
 }
 
-// ---------- game ----------
-function newEpisode(bump = true, seed) {
+// ---------- эпизод ----------
+function newEpisode(bump = true, seed, ep) {
   S.gen++;
-  let ep = store.get('geo-ep', 0); if (bump || !ep) ep++; store.set('geo-ep', ep);
-  Object.assign(S, {turn: 0, forced: null, finished: false, ep, seed: seed || newSeed()});
+  if (ep == null) { ep = store.get('geo-ep-' + MAPKEY, 0); if (bump || !ep) ep++; if (!RENDER) store.set('geo-ep-' + MAPKEY, ep); }
+  Object.assign(S, {turn: 0, forced: null, finished: false, ep, seed: seed || newSeed(), allies: [], hist: [], diff: [], es: newEpStats(), tac: {}, bet: null, hturn: 0});
   S.rs = hashSeed(S.seed);
   if (seed) S.dice = 'seed';
   if (S.player && !N[S.player]) S.player = null;
   defs.selectAll('pattern').remove();
   owner = orig.slice();
-  for (const n of Object.values(N)) { n.alive = true; n.terr = new Set(n.geoms); n.pop = n.pop0; n.area = n.area0; n.wins = 0; updatePattern(n); }
+  for (const n of Object.values(N)) Object.assign(n, {alive: true, terr: new Set(n.geoms), pop: n.pop0, area: n.area0, peak: n.area0, wins: 0, revived: false, winsAfter: 0, bonus: 0, skip: false});
+  for (const n of Object.values(N)) updatePattern(n);
   $('#log').innerHTML = '';
   afterReset();
   save();
@@ -825,69 +1096,187 @@ function afterReset() {
   resetBattle(); setFight(false); renderTitle(); renderBoards(); renderHud();
   $('#champ').classList.remove('on');
   setPaused(true);
-  S.gen++; loop();
+  if (!RENDER) { S.gen++; loop(); }
 }
 function setPaused(p) {
   S.paused = p;
-  const t = p ? (S.turn ? '▶ Дальше' : '▶ Старт') : '⏸ Пауза';
+  const t = p ? (S.turn ? L('▶ Дальше', '▶ Resume') : L('▶ Старт', '▶ Start')) : L('⏸ Пауза', '⏸ Pause');
   $('#bPlay').textContent = t; $('#rPlay').textContent = t;
 }
+// любое изменение владельца записывается для таймлапса
+function own(i, id) { owner[i] = id; S.diff.push([i, id]); }
+function commitHist() { if (S.diff.length) S.hist.push([S.turn, S.diff]); S.diff = []; }
+const areaOf = terr => { let a = 0; for (const i of terr) a += feats[i].areaKm; return a; };
+
+const allied = (a, b) => S.allies.some(x => (x.a === a && x.b === b) || (x.a === b && x.b === a));
+const alliesOf = a => S.allies.filter(x => x.a === a || x.b === a).map(x => x.a === a ? x.b : x.a).filter(id => N[id] && N[id].alive);
+function pruneAllies() { S.allies = S.allies.filter(x => N[x.a].alive && N[x.b].alive && x.until > S.turn); }
+function breakAlliance(a, b) { S.allies = S.allies.filter(x => !((x.a === a && x.b === b) || (x.a === b && x.b === a))); }
+
 function candidates(att) {
   const set = new Set();
   for (const i of N[att].terr) for (const j of adj[i]) { const o = owner[j]; if (o && o !== att) set.add(o); }
   if (set.size) return [...set];
   let best = null, bd = Infinity;
   for (const i of N[att].terr) for (const j of playable) {
-    const o = owner[j]; if (o === att) continue;
+    const o = owner[j]; if (!o || o === att) continue;
     const d = d3.geoDistance(cen[i], cen[j]); if (d < bd) { bd = d; best = o; }
   }
   return best ? [best] : [];
 }
+function humansAlive() { return [S.player, ...Object.keys(S.remote)].filter(id => id && N[id] && N[id].alive); }
 function chooseAttacker() {
   const f = S.forced; S.forced = null;
   if (f && N[f] && N[f].alive) return f;
-  if (S.player && N[S.player].alive && (S.turn + 1) % PLAYER_EVERY === 0) return S.player;
+  const hs = humansAlive();
+  if (hs.length && (S.turn + 1) % PLAYER_EVERY === 0) return hs[S.hturn++ % hs.length];
   return pick(alive()).iso3;
 }
-function roll(offline) {
-  const a = [0, 0, 0].map(() => RNG.die(offline)), d = [0, 0, 0].map(() => RNG.die(offline));
-  const as = [...a].sort((x, y) => y - x), ds = [...d].sort((x, y) => y - x);
+// ИИ избегает союзников, но иногда предаёт
+function aiTarget(att, cs) {
+  const foes = cs.filter(c => !allied(att, c));
+  if (!foes.length || rand() < BETRAY_CHANCE) return pick(cs);
+  return pick(foes);
+}
+function roll(offline, nA = 3, nD = 3) {
+  const a = Array.from({length: nA}, () => RNG.die(offline)), d = Array.from({length: nD}, () => RNG.die(offline));
+  const as = [...a].sort((x, y) => y - x).slice(0, 3), ds = [...d].sort((x, y) => y - x).slice(0, 3);
   let ra = 0, rd = 0;
   const pairs = as.map((v, k) => { const diff = v - ds[k]; if (diff > 0) ra += diff; else rd -= diff; return diff; });
-  return {a, d, as, ds, pairs, ra, rd};
+  return {a: a.slice(0, 3), d: d.slice(0, 3), as, ds, pairs, ra, rd};
 }
+function revive(n, idxs) {
+  for (const i of idxs) { const o = owner[i]; if (o && N[o]) N[o].terr.delete(i); own(i, n.iso3); }
+  Object.assign(n, {terr: new Set(idxs), alive: true, revived: true, winsAfter: 0, bonus: 0, skip: false, pop: n.pop0 * 0.6});
+  n.area = areaOf(n.terr);
+}
+// победитель забирает землю; если пала столица империи, часть провинций откалывается
 function annex(w, l) {
-  const moved = [...l.terr];
-  for (const i of moved) { owner[i] = w.iso3; w.terr.add(i); }
-  l.terr.clear(); l.alive = false;
-  w.pop += l.pop * POP_SHARE; w.area += l.area; w.wins++;
-  updatePattern(w);
-  return moved;
+  const groups = d3.group([...l.terr], i => orig[i]);
+  const provinces = [...groups.keys()].filter(o => o !== l.iso3);
+  // распад: с шансом COLLAPSE откалываются не больше двух провинций, чтобы эпизод сходился к одному чемпиону
+  const breakaway = new Set();
+  if (provinces.length >= 2 && alive().length > 3 && rand() < COLLAPSE) {
+    for (let k = 0; k < Math.min(2, provinces.length - 1); k++) breakaway.add(provinces.splice(Math.floor(rand() * provinces.length), 1)[0]);
+  }
+  const moved = [], freed = [];
+  for (const [o, idxs] of groups) {
+    if (breakaway.has(o)) { freed.push(N[o]); revive(N[o], idxs); continue; }
+    for (const i of idxs) { own(i, w.iso3); w.terr.add(i); moved.push(i); }
+  }
+  const share = moved.length / Math.max(1, moved.length + d3.sum(freed, n => n.terr.size));
+  w.pop += l.pop * POP_SHARE * share;
+  l.terr.clear(); l.alive = false; l.area = 0;
+  w.area = areaOf(w.terr); w.peak = Math.max(w.peak, w.area); w.wins++;
+  if (w.revived) w.winsAfter++;
+  if (freed.length) S.es.collapses++;
+  updatePattern(w); for (const n of freed) updatePattern(n);
+  breakAlliance(w.iso3, l.iso3);
+  return {moved, freed};
 }
 // восстание: захваченная страна возвращает свои исходные земли
-function rebellionPick() {
-  if (alive().length < 4 || rand() >= REBEL_CHANCE) return null;
+function rebellionPick(force) {
+  if (alive().length < 4 || (!force && rand() >= REBEL_CHANCE)) return null;
   const dead = Object.values(N).filter(n => !n.alive && n.geoms.every(i => owner[i] && owner[i] !== n.iso3));
   return dead.length ? pick(dead) : null;
 }
 function applyRebellion(r) {
   const x = N[owner[r.mainGeom]];
-  for (const i of r.geoms) { const o = N[owner[i]]; o.terr.delete(i); o.area -= feats[i].areaKm; owner[i] = r.iso3; }
-  r.terr = new Set(r.geoms); r.alive = true; r.area = r.area0; r.wins = 0;
-  r.pop = r.pop0 * 0.6; x.pop = Math.max(x.pop - r.pop0 * POP_SHARE, x.pop0 * 0.5);
+  revive(r, r.geoms);
+  x.area = areaOf(x.terr); x.pop = Math.max(x.pop - r.pop0 * POP_SHARE, x.pop0 * 0.5);
   updatePattern(r); updatePattern(x);
   paint(r.geoms);
-  const st = stats(); st.rebellions++; store.set('geo-stats', st);
-  logLine(`<span>🔥</span>${fl(r)}<b>${esc(r.name)}</b> восстаёт против ${fl(x)}${esc(x.name)}`, 'rebel');
+  S.es.rebellions++;
+  const st = stats(); st.rebellions++; saveStats(st);
+  logLine(`<span>🔥</span>${fl(r)}<b>${esc(r.name)}</b> ${L('восстаёт против', 'rebels against')} ${fl(x)}${esc(x.name)}`, 'rebel');
   return x;
 }
-function checkPlayerFell(l) {
-  if (S.player && l.iso3 === S.player) {
-    toast(`💀 Ваша страна <b>${esc(l.name)}</b> пала. Игра продолжится без вас.`, '', 4000);
-    SFX.lose(); renderHud();
-  }
+function checkHumanFell(l) {
+  if (l.iso3 === S.player) { toast(L(`💀 Ваша страна <b>${esc(l.name)}</b> пала. Игра продолжится без вас.`, `💀 Your nation <b>${esc(l.name)}</b> has fallen. The game goes on without you.`), '', 4000); SFX.play('lose'); renderHud(); }
+  if (S.remote[l.iso3]) { send(S.remote[l.iso3], {type: 'fell', iso: l.iso3}); S.remote[l.iso3].iso = null; delete S.remote[l.iso3]; }
 }
 
+// ---------- события, союзы, восстания ----------
+const EVENTS = [
+  {id: 'plague', w: 3, ic: '☠️', ru: 'Чума', en: 'Plague', apply: n => { n.pop *= 0.7; }, text: n => L(`${n.name} теряет 30% населения`, `${n.name} loses 30% of its population`)},
+  {id: 'boom', w: 3, ic: '👶', ru: 'Бэби-бум', en: 'Baby boom', apply: n => { n.pop *= 1.3; }, text: n => L(`Население: ${n.name} +30%`, `${n.name}: population +30%`)},
+  {id: 'gold', w: 3, ic: '💰', ru: 'Золотая лихорадка', en: 'Gold rush', apply: n => { n.bonus = (n.bonus || 0) + 1; }, text: n => L(`${n.name}: +1 очко в следующем бою`, `${n.name}: +1 point in its next battle`)},
+  {id: 'drought', w: 2, ic: '🌵', ru: 'Засуха', en: 'Drought', apply: n => { n.skip = true; }, text: n => L(`${n.name} пропустит следующую атаку`, `${n.name} will skip its next attack`)},
+  {id: 'revolution', w: 2, ic: '🔥', ru: 'Революция', en: 'Revolution', apply: null, text: () => ''}
+];
+function pickEvent() {
+  const tot = d3.sum(EVENTS, e => e.w); let r = rand() * tot;
+  for (const e of EVENTS) { r -= e.w; if (r < 0) return e; }
+  return EVENTS[0];
+}
+async function showCard(ic, cap, title, text, ms = 2300) {
+  if (S.turbo) return;
+  const c = $('#evCard');
+  c.querySelector('.ic').textContent = ic; c.querySelector('.cap').textContent = cap;
+  c.querySelector('h3').innerHTML = title; c.querySelector('p').innerHTML = text;
+  c.classList.add('on');
+  await wait(ms);
+  c.classList.remove('on');
+}
+async function maybeEvent() {
+  if (alive().length < 4 || rand() >= EVENT_CHANCE) return;
+  const e = pickEvent();
+  if (e.id === 'revolution') {
+    const r = rebellionPick(true); if (!r) return;
+    S.es.events++;
+    if (!S.turbo) { SFX.play('event'); VOICE.say(L(`Событие: революция! ${r.name} поднимает восстание.`, `Event: revolution! ${r.name} rises up.`)); }
+    await showCard(e.ic, L('Событие', 'Event'), L(e.ru, e.en), `${fl(r)}${esc(r.name)}`);
+    await rebellionScene(r);
+    return;
+  }
+  S.es.events++;
+  const pool = e.id === 'plague' ? alive().sort((a, b) => b.pop - a.pop).slice(0, 12) : alive();
+  const n = pick(pool);
+  e.apply(n);
+  logLine(`<span>${e.ic}</span><b>${L(e.ru, e.en)}</b>: ${fl(n)}${esc(e.text(n))}`, 'ev');
+  if (S.turbo) return;
+  SFX.play('event'); VOICE.say(`${L('Событие', 'Event')}: ${L(e.ru, e.en)}. ${e.text(n)}.`);
+  setDim(true, [n.iso3]); highlight(n.iso3);
+  const cam = camera(territoryBox(n), 700);
+  await showCard(e.ic, L('Событие', 'Event'), L(e.ru, e.en), `${fl(n)}${esc(e.text(n))}`);
+  await cam;
+  setDim(false); highlight();
+}
+async function maybeAlliance() {
+  pruneAllies();
+  if (S.allies.length >= 3 || alive().length < 5 || rand() >= ALLY_CHANCE) return;
+  const a = pick(alive()), cs = candidates(a.iso3).filter(c => !allied(a.iso3, c));
+  if (!cs.length) return;
+  const b = N[pick(cs)];
+  S.allies.push({a: a.iso3, b: b.iso3, until: S.turn + 12});
+  S.es.alliances++;
+  logLine(`<span>🤝</span>${fl(a)}<b>${esc(a.name)}</b> ${L('и', 'and')} ${fl(b)}<b>${esc(b.name)}</b> ${L('заключают союз', 'form an alliance')}`, 'al');
+  renderMarks();
+  if (S.turbo) return;
+  SFX.play('ally'); VOICE.say(L(`Союз: ${a.name} и ${b.name}.`, `Alliance: ${a.name} and ${b.name}.`));
+  setDim(true, [a.iso3, b.iso3]); highlight(a.iso3, b.iso3);
+  const cam = camera(unionBox([a.iso3, b.iso3]), 700);
+  await showCard('🤝', L('Союз на 12 ходов', 'Alliance for 12 turns'), `${fl(a)}${esc(a.name)} + ${fl(b)}${esc(b.name)}`, L('Не нападают друг на друга и помогают в обороне: +1 очко', 'No attacks on each other, +1 point when defending'));
+  await cam;
+}
+async function rebellionScene(r) {
+  const x = N[owner[r.mainGeom]];
+  if (!S.turbo) {
+    setDim(true, [x.iso3]); highlight(null, x.iso3);
+    await camera(boxOf(r.geoms), 900);
+  }
+  applyRebellion(r);
+  updateBorders(); renderMarks();
+  if (S.turbo) return;
+  flash(r.geoms);
+  setDim(true, [r.iso3, x.iso3]); highlight(r.iso3, x.iso3); highlightPlayer();
+  toast(L(`🔥 Восстание! <b>${esc(r.name)}</b> отделяется от <b>${esc(x.name)}</b>`, `🔥 Rebellion! <b>${esc(r.name)}</b> breaks away from <b>${esc(x.name)}</b>`), 'fire', 3000);
+  SFX.play('rebel'); VOICE.say(L(`Восстание! ${r.name} обретает независимость.`, `Rebellion! ${r.name} is independent again.`));
+  renderTitle(); renderBoards();
+  await wait(1800);
+}
+
+// ---------- главный цикл ----------
 async function loop() {
   const g = S.gen;
   try {
@@ -898,30 +1287,42 @@ async function loop() {
       save();
       if (S.stepOnce) { S.stepOnce = false; setPaused(true); }
     }
-    finish();
+    await finish();
   } catch (e) { if (e !== ABORT) console.error(e); }
 }
 
+function resolveQuick(att, def) {
+  const A = N[att], D = N[def];
+  if (allied(att, def)) { breakAlliance(att, def); S.es.betrayals++; }
+  const r = roll(true);
+  const ra = r.ra + (A.bonus || 0), rd = r.rd + (D.bonus || 0) + (alliesOf(def).some(x => x !== att) ? 1 : 0);
+  A.bonus = 0; D.bonus = 0;
+  const pa = ra * mult(A.pop), pd = rd * mult(D.pop);
+  const attWon = pa > pd, W_ = attWon ? A : D, L_ = attWon ? D : A;
+  const {moved, freed} = annex(W_, L_);
+  paint(moved); for (const n of freed) paint([...n.terr]);
+  logBattle(W_, L_, attWon ? pa : pd, attWon ? pd : pa, attWon);
+  noteBlowout(W_, L_, attWon ? pa : pd, attWon ? pd : pa);
+  checkHumanFell(L_);
+}
 async function turboBatch() {
   const g = S.gen;
   setDim(false); highlight(); resetBattle(); setFight(false);
   for (let k = 0; k < 4 && alive().length > 1; k++) {
+    await maybeEvent();
+    if (alive().length < 2) break;
     const att = chooseAttacker(), cs = candidates(att);
     if (!cs.length) continue;
-    const def = pick(cs), A = N[att], D = N[def];
-    const r = roll(true);
-    const pa = r.ra * mult(A.pop), pd = r.rd * mult(D.pop);
-    const attWon = pa > pd, W_ = attWon ? A : D, L = attWon ? D : A;
     S.turn++;
-    paint(annex(W_, L));
-    logBattle(W_, L, attWon ? pa : pd, attWon ? pd : pa, attWon);
-    noteBlowout(W_, L, attWon ? pa : pd, attWon ? pd : pa);
-    checkPlayerFell(L);
+    if (N[att].skip) { N[att].skip = false; commitHist(); continue; }
+    resolveQuick(att, aiTarget(att, cs));
     const reb = rebellionPick(); if (reb) applyRebellion(reb);
+    await maybeAlliance();
+    commitHist();
   }
-  updateBorders(); renderTitle(); renderBoards(); highlightPlayer();
-  $('#rngName').textContent = S.dice === 'seed' ? 'по зерну' : 'Web Crypto';
-  await new Promise(r => setTimeout(r, 16));
+  updateBorders(); renderTitle(); renderBoards(); renderHud();
+  $('#rngName').textContent = S.dice === 'seed' ? L('по зерну', 'by seed') : 'Web Crypto';
+  await sleep(16);
   if (g !== S.gen) throw ABORT;
 }
 
@@ -929,8 +1330,8 @@ async function roulette(s, pool, final, ms) {
   const steps = Math.max(4, Math.round(10 / Math.sqrt(S.speed)));
   for (let k = 0; k < steps; k++) {
     const n = k === steps - 1 ? final : pickVis(pool);
-    s.img.src = flagPng(n.iso2); s.img.style.visibility = 'visible'; s.name.textContent = n.name;
-    SFX.tick();
+    s.img.src = n.small; s.img.style.visibility = 'visible'; s.name.textContent = n.name;
+    SFX.play('tick');
     await wait(ms * (0.4 + k / steps));
   }
 }
@@ -940,80 +1341,131 @@ async function countPop(s, n, ms) {
     const f = now => {
       if (g !== S.gen) return res();
       const p = Math.min(1, ((now - t0) * S.speed) / ms), e = 1 - Math.pow(1 - p, 3), v = n.pop * e;
-      s.pop.textContent = 'Нас. ' + fmt(v); s.mult.textContent = '×' + mult(v).toFixed(1);
+      s.pop.textContent = L('Нас. ', 'Pop. ') + fmt(v); s.mult.textContent = '×' + mult(v).toFixed(1);
       p < 1 ? requestAnimationFrame(f) : res();
     };
     requestAnimationFrame(f);
   });
 }
 
-// ход игрока: выбор цели на карте или кнопкой
-async function playerTarget(A, cs) {
-  setSide(sA, A, 'Атакующий · вы');
+// ход человека: цель выбирается на карте или кнопкой; удалённому игроку уходит запрос
+async function humanTarget(A, cs) {
+  const remote = S.remote[A.iso3];
   setDim(true, [A.iso3, ...cs]); highlight(A.iso3);
-  geoSel.classed('target', (d, i) => cs.includes(owner[i]));
+  geoSel.classed('target', (d, i) => !remote && cs.includes(owner[i]));
   await camera(unionBox([A.iso3, ...cs]), 900);
-  $('#cands').innerHTML = cs.map(c => N[c]).sort((a, b) => a.pop - b.pop)
-    .map(n => `<button class="cand" data-iso="${n.iso3}">${fl(n)}${esc(n.name)} <small>×${mult(n.pop).toFixed(1)}</small></button>`).join('');
-  $('#choose').classList.add('on');
+  const list = cs.map(c => N[c]).sort((a, b) => a.pop - b.pop).map(n => ({iso: n.iso3, name: n.name, small: n.small, m: mult(n.pop), ally: allied(A.iso3, n.iso3)}));
   S.choosing = new Set(cs); S.choice = undefined;
-  VOICE.say('Ваш ход. Выберите цель.');
-  await waitUntil(() => S.choice !== undefined);
+  if (remote) {
+    send(remote, {type: 'prompt', kind: 'target', cands: list});
+    $('#calc').textContent = L(`Ходит игрок: ${A.name}…`, `Waiting for player: ${A.name}…`);
+    if (!await waitUntil(() => S.choice !== undefined, REMOTE_WAIT)) S.choice = aiTarget(A.iso3, cs);
+    $('#calc').textContent = '';
+  } else {
+    $('#cands').innerHTML = list.map(c => `<button class="cand ${c.ally ? 'ally' : ''}" data-iso="${c.iso}"><img src="${c.small}" alt="">${esc(c.name)} <small>×${c.m.toFixed(1)}${c.ally ? L(' · союзник', ' · ally') : ''}</small></button>`).join('');
+    $('#choose').classList.add('on');
+    VOICE.say(L('Ваш ход. Выберите цель.', 'Your turn. Pick a target.'));
+    await waitUntil(() => S.choice !== undefined);
+    $('#choose').classList.remove('on');
+  }
   const c = S.choice; S.choosing = null; S.choice = undefined;
   geoSel.classed('target', false);
-  $('#choose').classList.remove('on');
   return c;
 }
+const TACTICS = {
+  careful: {ic: '🛡', ru: 'Осторожно', en: 'Careful', dRu: 'очки ×0.8, при поражении — отступление', dEn: 'points ×0.8, retreat if you lose'},
+  normal: {ic: '🎲', ru: 'Обычно', en: 'Normal', dRu: '3 кубика', dEn: '3 dice'},
+  allin: {ic: '🔥', ru: 'Всё на кон', en: 'All in', dRu: '4 кубика, лучшие 3, +0.2 к множителю', dEn: '4 dice, best 3 count, +0.2 multiplier'}
+};
+// выбор тактики и бросок человеком
+async function humanRoll(id, attacking) {
+  const opts = attacking ? ['careful', 'normal', 'allin'] : ['normal', 'allin'];
+  S.rolled = false; S.tac[id] = 'normal';
+  $('#rollRow').dataset.for = id;
+  const remote = S.remote[id];
+  if (remote) {
+    send(remote, {type: 'prompt', kind: 'roll', opts, attacking});
+    $('#calc').textContent = L(`Бросает игрок: ${N[id].name}…`, `Waiting for ${N[id].name} to roll…`);
+    if (!await waitUntil(() => S.rolled, REMOTE_WAIT)) S.tac[id] = 'normal';
+    $('#calc').textContent = '';
+    return;
+  }
+  const row = $('#rollRow');
+  row.innerHTML = `<div class="hint">${attacking ? L('Выберите тактику и бросайте', 'Pick a tactic and roll') : L('На вас напали! Выберите тактику обороны', 'You are under attack! Pick a defence')}</div>` +
+    opts.map(o => `<button class="btn tac ${o === 'normal' ? 'primary go' : ''}" data-t="${o}">${TACTICS[o].ic} ${L(TACTICS[o].ru, TACTICS[o].en)}<small>${L(TACTICS[o].dRu, TACTICS[o].dEn)}</small></button>`).join('');
+  row.classList.add('on');
+  if (!attacking) VOICE.say(L('На вас напали!', 'You are under attack!'));
+  await waitUntil(() => S.rolled);
+  row.classList.remove('on');
+}
+$('#rollRow').addEventListener('click', e => { const b = e.target.closest('.tac'); if (!b) return; if (SFX.on) SFX.ac(); S.tac[$('#rollRow').dataset.for] = b.dataset.t; S.rolled = true; });
 $('#cands').addEventListener('click', e => { const b = e.target.closest('.cand'); if (b && S.choosing) S.choice = b.dataset.iso; });
 $('#skipBtn').onclick = () => { if (S.choosing) S.choice = null; };
 
 async function battle() {
+  await maybeEvent();
+  if (alive().length < 2) return;
   const att = chooseAttacker(), A = N[att];
   const cs = candidates(att);
   if (!cs.length) return;
   S.turn++; renderTitle();
   resetBattle(); setFight(true);
-  const mine = att === S.player;
+  if (A.skip) {
+    A.skip = false;
+    logLine(`<span>${S.turn}.</span>🌵 ${fl(A)}<b>${esc(A.name)}</b> ${L('пропускает ход из-за засухи', 'skips the turn (drought)')}`, 'ev');
+    toast(L(`🌵 ${esc(A.name)} пропускает ход`, `🌵 ${esc(A.name)} skips the turn`));
+    setFight(false); commitHist(); await wait(900); return;
+  }
+  const human = isHuman(att);
   let def;
-
-  if (mine) {
-    def = await playerTarget(A, cs);
+  if (human) {
+    setSide(sA, A, L('Атакующий', 'Attacker'));
+    def = await humanTarget(A, cs);
     if (!def) {
-      logLine(`<span>${S.turn}.</span>${fl(A)}<b>${esc(A.name)}</b> пропускает ход`);
-      setDim(false); highlight(); setFight(false);
+      logLine(`<span>${S.turn}.</span>${fl(A)}<b>${esc(A.name)}</b> ${L('пропускает ход', 'skips the turn')}`);
+      setDim(false); highlight(); setFight(false); commitHist();
       await camera(null, 700);
       return;
     }
   } else {
-    def = pick(cs);
+    def = aiTarget(att, cs);
     setDim(true, [att]);
     await roulette(sA, alive(), A, 70);
     setDim(true, [att]); highlight(att);
     await wait(350);
   }
   const D = N[def];
-  if (mine) setSide(sD, D, 'Защитник'); else await roulette(sD, cs.map(c => N[c]), D, 90);
-  setSide(sA, A, mine ? 'Атакующий · вы' : 'Атакующий'); setSide(sD, D, def === S.player ? 'Защитник · вы' : 'Защитник');
+  if (!human) await roulette(sD, cs.map(c => N[c]), D, 90);
+  setSide(sA, A, L('Атакующий', 'Attacker')); setSide(sD, D, L('Защитник', 'Defender'));
   setDim(true, [att, def]); highlight(att, def);
-  await camera(unionBox([att, def]), 1100);
-  // мечи и население
-  $('#vs').classList.add('on'); SFX.clash();
-  await Promise.all([countPop(sA, A, 900), countPop(sD, D, 900)]);
-  const mA = mult(A.pop), mD = mult(D.pop);
-  await wait(250);
-  // бросок: если участвует игрок — по кнопке
-  $('#duel').classList.add('on');
-  if (S.player && (att === S.player || def === S.player)) {
-    $('#rollBtn').textContent = def === S.player ? '🛡 Защищайтесь — бросить кубики' : '🎲 Бросить кубики';
-    $('#rollRow').classList.add('on'); S.rolled = false;
-    if (def === S.player) VOICE.say(`На вас напала ${A.name}!`);
-    await waitUntil(() => S.rolled);
-    $('#rollRow').classList.remove('on');
+  // предательство союзника
+  if (allied(att, def)) {
+    breakAlliance(att, def); S.es.betrayals++; renderMarks();
+    logLine(`<span>🗡</span>${fl(A)}<b>${esc(A.name)}</b> ${L('предаёт союзника', 'betrays its ally')} ${fl(D)}${esc(D.name)}`, 'al');
+    toast(L(`🗡 Предательство! <b>${esc(A.name)}</b> нападает на союзника`, `🗡 Betrayal! <b>${esc(A.name)}</b> attacks its ally`), 'fire', 3000);
+    SFX.play('betray'); VOICE.say(L(`Предательство! ${A.name} нападает на союзника.`, `Betrayal! ${A.name} attacks its ally.`));
   }
-  const r = roll(false);
+  await camera(unionBox([att, def]), 1100);
+  // мечи, население, модификаторы
+  $('#vs').classList.add('on'); SFX.play('clash');
+  const allyHelp = alliesOf(def).some(x => x !== att) ? 1 : 0;
+  const bonA = A.bonus || 0, bonD = (D.bonus || 0) + allyHelp;
+  sA.tags.textContent = bonA ? `💰 +${bonA}` : '';
+  sD.tags.textContent = [D.bonus ? `💰 +${D.bonus}` : '', allyHelp ? L('🤝 союзник +1', '🤝 ally +1') : ''].filter(Boolean).join(' · ');
+  await Promise.all([countPop(sA, A, 900), countPop(sD, D, 900)]);
+  await wait(250);
+  // тактики людей
+  $('#duel').classList.add('on');
+  S.tac = {};
+  if (isHuman(att)) await humanRoll(att, true);
+  if (isHuman(def)) await humanRoll(def, false);
+  const tA = S.tac[att] || 'normal', tD = S.tac[def] || 'normal';
+  const mA = mult(A.pop) + (tA === 'allin' ? 0.2 : 0), mD = mult(D.pop) + (tD === 'allin' ? 0.2 : 0);
+  sA.mult.textContent = '×' + mA.toFixed(1); sD.mult.textContent = '×' + mD.toFixed(1);
+  const r = roll(false, tA === 'allin' ? 4 : 3, tD === 'allin' ? 4 : 3);
   $('#rngName').textContent = RNG.last;
-  $('#rngSrc').textContent = 'кубики: ' + RNG.last;
-  SFX.dice();
+  $('#rngSrc').textContent = L('кубики: ', 'dice: ') + RNG.last;
+  SFX.play('dice');
   r.a.forEach((v, k) => setDie(diceA[k], v, 'roll')); r.d.forEach((v, k) => setDie(diceD[k], v, 'roll'));
   await wait(1100);
   r.as.forEach((v, k) => setDie(diceA[k], v, 'move')); r.ds.forEach((v, k) => setDie(diceD[k], v, 'move'));
@@ -1027,56 +1479,112 @@ async function battle() {
     else { ar.textContent = '='; diceA[k].el.classList.add('worse'); diceD[k].el.classList.add('worse'); }
     ar.classList.add('on');
     $('#pA b').textContent = ca; $('#pD b').textContent = cd;
-    if (diff) SFX.point();
+    if (diff) SFX.play('point');
     await wait(480);
   }
-  // множитель
-  const pa = +(ca * mA).toFixed(1), pd = +(cd * mD).toFixed(1);
+  // бонусы и множитель
+  const carefulK = tA === 'careful' ? 0.8 : 1;
+  const pa = +((ca + bonA) * mA * carefulK).toFixed(1), pd = +((cd + bonD) * mD).toFixed(1);
+  A.bonus = 0; D.bonus = 0;
   $('#pA b').textContent = pa % 1 ? pa.toFixed(1) : pa; $('#pD b').textContent = pd % 1 ? pd.toFixed(1) : pd;
   $('#pA').classList.toggle('gold', mA > 1); $('#pD').classList.toggle('gold', mD > 1);
-  $('#calc').innerHTML = `${ca} × ${mA.toFixed(1)} = <b>${pa.toFixed(1)}</b> &nbsp;·&nbsp; ${cd} × ${mD.toFixed(1)} = <b>${pd.toFixed(1)}</b>${pa === pd ? ' · ничья — защитник устоял' : ''}`;
+  const part = (c, b, m, k) => `${b ? `(${c}+${b})` : c} × ${m.toFixed(1)}${k !== 1 ? ` × ${k}` : ''} = <b>${((c + b) * m * k).toFixed(1)}</b>`;
+  const tacTxt = [tA !== 'normal' ? `${TACTICS[tA].ic} ${A.name}: ${L(TACTICS[tA].ru, TACTICS[tA].en)}` : '', tD !== 'normal' ? `${TACTICS[tD].ic} ${D.name}: ${L(TACTICS[tD].ru, TACTICS[tD].en)}` : ''].filter(Boolean).join(' · ');
+  $('#calc').innerHTML = `${part(ca, bonA, mA, carefulK)} &nbsp;·&nbsp; ${part(cd, bonD, mD, 1)}${pa === pd ? L(' · ничья — защитник устоял', ' · tie — defender holds') : ''}${tacTxt ? '<br>' + esc(tacTxt) : ''}`;
   await wait(650);
   // итог
-  const attWon = pa > pd, W_ = attWon ? A : D, L = attWon ? D : A;
+  const attWon = pa > pd, W_ = attWon ? A : D, L_ = attWon ? D : A;
   const sW = attWon ? sA : sD, sL = attWon ? sD : sA;
-  sW.el.classList.add('win'); sW.role.textContent = 'Победитель';
-  sL.el.classList.add('lose'); sL.role.textContent = 'Проигравший';
+  sW.el.classList.add('win'); sW.role.textContent = L('Победитель', 'Winner');
+  sL.el.classList.add('lose'); sL.role.textContent = L('Проигравший', 'Loser');
   $(attWon ? '#pD' : '#pA').classList.add('lose');
   $('#vs').classList.add('done');
-  L.iso3 === S.player ? SFX.lose() : SFX.win();
-  VOICE.say(`Победа: ${W_.name}. ${L.name} выбывает.`);
-  await wait(500);
-  // аннексия с волной
-  const from = territoryBox(W_);
-  const moved = annex(W_, L);
-  await captureWave(moved, W_, from);
-  updateBorders(); setDim(true, [W_.iso3]); highlight(W_.iso3); highlightPlayer();
-  logBattle(W_, L, attWon ? pa : pd, attWon ? pd : pa, attWon);
-  noteBlowout(W_, L, attWon ? pa : pd, attWon ? pd : pa);
-  checkPlayerFell(L);
-  renderTitle(); renderBoards();
-  await wait(1000);
-  // восстание
-  const reb = rebellionPick();
-  if (reb) {
-    const x = N[owner[reb.mainGeom]];
-    setDim(true, [x.iso3]); highlight(null, x.iso3);
-    await camera(territoryBox({terr: new Set(reb.geoms)}), 900);
-    applyRebellion(reb);
-    geoSel.filter((d, i) => reb.geoms.includes(i)).classed('flash', false).each(function () { void this.getBBox(); }).classed('flash', true);
-    updateBorders(); setDim(true, [reb.iso3, x.iso3]); highlight(reb.iso3, x.iso3); highlightPlayer();
-    toast(`🔥 Восстание! <b>${esc(reb.name)}</b> отделяется от <b>${esc(x.name)}</b>`, 'fire', 3000);
-    SFX.rebel(); VOICE.say(`Восстание! ${reb.name} обретает независимость.`);
-    renderTitle(); renderBoards();
-    await wait(1800);
+  // осторожная атака: проигравший атакующий отступает без потерь
+  if (!attWon && tA === 'careful') {
+    sL.role.textContent = L('Отступил', 'Retreated');
+    logLine(`<span>${S.turn}.</span>🛡 ${fl(A)}<b>${esc(A.name)}</b> ${L('отступает от', 'retreats from')} ${fl(D)}${esc(D.name)}<span class="sc">${pa.toFixed(1)} : ${pd.toFixed(1)}</span>`);
+    SFX.play('lose'); VOICE.say(L(`${A.name} отступает.`, `${A.name} retreats.`));
+    await wait(1400);
+    setDim(false); highlight(); setFight(false); commitHist();
+    await camera(null, 900);
+    return;
   }
-  // общий план
+  SFX.play(isHuman(L_.iso3) ? 'lose' : 'win');
+  VOICE.say(attWon ? L(`${W_.name} захватывает: ${L_.name}.`, `${W_.name} conquers ${L_.name}.`) : L(`${W_.name} отбивается. ${L_.name} выбывает.`, `${W_.name} holds. ${L_.name} is out.`));
+  await wait(500);
+  // аннексия с волной и возможным распадом империи
+  const from = territoryBox(W_);
+  const {moved, freed} = annex(W_, L_);
+  await captureWave(moved, W_, from);
+  updateBorders(); setDim(true, [W_.iso3, ...freed.map(n => n.iso3)]); highlight(W_.iso3); highlightPlayer(); renderMarks();
+  logBattle(W_, L_, attWon ? pa : pd, attWon ? pd : pa, attWon);
+  noteBlowout(W_, L_, attWon ? pa : pd, attWon ? pd : pa);
+  checkHumanFell(L_);
+  renderTitle(); renderBoards();
+  if (freed.length) {
+    for (const n of freed) paint([...n.terr]);
+    flash(freed.flatMap(n => [...n.terr]));
+    logLine(`<span>💥</span>${L('Империя', 'Empire of')} ${fl(L_)}<b>${esc(L_.name)}</b> ${L('распалась', 'collapsed')}: ${freed.map(n => fl(n) + esc(n.name)).join(', ')}`, 'rebel');
+    toast(L(`💥 Империя <b>${esc(L_.name)}</b> распалась: ${freed.length} обрели независимость`, `💥 <b>${esc(L_.name)}</b> collapsed: ${freed.length} became independent`), 'fire', 3200);
+    SFX.play('collapse'); VOICE.say(L(`Столица пала, империя ${L_.name} распалась.`, `The capital fell, the empire of ${L_.name} collapsed.`));
+    await wait(1500);
+  }
+  await wait(1000);
+  const reb = rebellionPick();
+  if (reb) await rebellionScene(reb);
+  await maybeAlliance();
+  commitHist();
   setDim(false); highlight(); setFight(false);
   await camera(null, 900);
   await wait(350);
 }
 
-function finish() {
+// ---------- финал: таймлапс и итоги ----------
+async function timelapse(ms = 7000) {
+  const g = S.gen;
+  setFight(false); setDim(false); highlight(); gCaps.style('display', 'none'); gAlly.style('display', 'none');
+  await camera(null, 500);
+  const ownR = orig.slice(), terr = {};
+  for (const n of Object.values(N)) { terr[n.iso3] = new Set(n.geoms); updatePattern(n, terr[n.iso3]); }
+  paint(null, ownR); updateBorders(ownR);
+  const lab = $('#tlLabel'); lab.classList.add('on');
+  const steps = S.hist.length, t0 = performance.now();
+  let k = 0;
+  while (k < steps) {
+    if (g !== S.gen) return;
+    const target = Math.min(steps, Math.max(k + 1, Math.ceil(((performance.now() - t0) / ms) * steps)));
+    const touched = new Set(), changed = [];
+    for (; k < target; k++) {
+      for (const [i, id] of S.hist[k][1]) {
+        const prev = ownR[i]; if (prev && terr[prev]) terr[prev].delete(i);
+        ownR[i] = id; terr[id].add(i); touched.add(id); if (prev) touched.add(prev); changed.push(i);
+      }
+    }
+    for (const id of touched) updatePattern(N[id], terr[id]);
+    paint(changed, ownR);
+    if (changed.length) updateBorders(ownR);
+    lab.textContent = `${L('Таймлапс · ход', 'Timelapse · turn')} ${k ? S.hist[k - 1][0] : 0}`;
+    await sleep(40);
+  }
+  await sleep(600);
+  lab.classList.remove('on');
+  for (const n of Object.values(N)) if (n.terr.size) updatePattern(n);
+  paint(); updateBorders(); gCaps.style('display', null); gAlly.style('display', null);
+}
+function summaryHTML(w) {
+  const top = Object.values(N).sort((a, b) => b.peak - a.peak).slice(0, 5);
+  const comeback = Object.values(N).filter(n => n.revived && n.winsAfter > 0).sort((a, b) => b.winsAfter - a.winsAfter).slice(0, 3);
+  const es = S.es;
+  let bet = '';
+  if (S.bet) bet = `<div class="betres">${S.bet === w.iso3 ? L('🎯 Ставка сыграла!', '🎯 Your bet won!') : L(`🎯 Ставка на ${esc(N[S.bet].name)} не сыграла`, `🎯 Your bet on ${esc(N[S.bet].name)} lost`)}</div>`;
+  return `${bet}
+    <div><div class="k">${L('Топ-5 по пику территории', 'Top 5 by peak territory')}</div><ol>${top.map(n => `<li>${nm(n.iso3)} — ${fmtArea(n.peak)}</li>`).join('')}</ol></div>
+    <div><div class="k">${L('Камбэки', 'Comebacks')}</div>${comeback.length ? `<ol>${comeback.map(n => `<li>${nm(n.iso3)} — ${L('побед после возрождения', 'wins after revival')}: ${n.winsAfter}</li>`).join('')}</ol>` : '—'}
+      <div class="k" style="margin-top:10px">${L('Эпизод', 'Episode')}</div>
+      🔥 ${es.rebellions} · 🎴 ${es.events} · 🤝 ${es.alliances} · 🗡 ${es.betrayals} · 💥 ${es.collapses}</div>
+    <div style="grid-column:1/-1"><div class="k">${L('Крупнейший разгром эпизода', 'Biggest blowout of the episode')}</div>${es.blowout ? `${nm(es.blowout.w)} ${es.blowout.pw.toFixed(1)} : ${es.blowout.pl.toFixed(1)} ${nm(es.blowout.l)}` : '—'}</div>`;
+}
+async function finish() {
   const w = alive()[0];
   if (!w || S.finished) return;
   S.finished = true;
@@ -1085,18 +1593,24 @@ function finish() {
   if (!st.longest || S.turn > st.longest.turns) st.longest = {turns: S.turn, w: w.iso3, ep: S.ep};
   const me = w.iso3 === S.player;
   if (me) st.playerWins++;
-  store.set('geo-stats', st); store.set('geo-save', null);
+  if (S.bet) { st.betsTotal++; if (S.bet === w.iso3) st.betsWon++; }
+  saveStats(st); save();
   renderStats();
-  setPaused(true); setDim(false); highlight(w.iso3); setFight(false); camera(null, 800);
-  $('#cCap').textContent = me ? 'Вы победили!' : 'Чемпион эпизода';
+  setPaused(true); setFight(false);
+  SFX.play('fanfare');
+  VOICE.say(me ? L(`Вы победили! ${w.name} правит картой!`, `You won! ${w.name} rules the map!`) : L(`Чемпион эпизода: ${w.name}!`, `Episode champion: ${w.name}!`));
+  if (!S.turbo || RENDER) await timelapse(RENDER ? 8000 : 6000);
+  highlight(w.iso3); camera(null, 800);
+  $('#cCap').textContent = me ? L('Вы победили!', 'You won!') : L('Чемпион эпизода', 'Episode champion');
   $('#cName').textContent = w.name;
-  $('#cFlag').src = flagPng(w.iso2);
-  $('#cStats').textContent = `${w.wins} ${plural(w.wins, 'победа', 'победы', 'побед')} · ${fmtArea(w.area)} · население ${fmt(w.pop)} · ходов: ${S.turn}`;
+  $('#cFlag').src = w.small;
+  $('#cStats').textContent = `${nWins(w.wins)} · ${fmtArea(w.area)} · ${L('население', 'population')} ${fmt(w.pop)} · ${nTurns(S.turn)}`;
+  $('#cSum').innerHTML = summaryHTML(w);
   $('#champ').classList.add('on');
-  SFX.win(); VOICE.say(me ? `Вы победили! ${w.name} правит миром!` : `Чемпион эпизода: ${w.name}!`);
+  if (RENDER) { await sleep(7000); window.__done = true; }
 }
 
-// ---------- info card: Wikipedia REST API ----------
+// ---------- карточка страны: Wikipedia REST API ----------
 const wikiCache = {};
 async function wiki(n) {
   if (wikiCache[n.iso3]) return wikiCache[n.iso3];
@@ -1105,64 +1619,57 @@ async function wiki(n) {
     if (!r.ok) return null; const j = await r.json();
     return j.type === 'disambiguation' ? null : j;
   };
-  let j = await sum('ru', n.name).catch(() => null);
+  let j = await sum(LANG, n.name).catch(() => null);
   if (!j) {
-    const s = await fetch(`https://ru.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(n.name + ' государство')}&srlimit=1&format=json&origin=*`).then(r => r.json()).catch(() => null);
+    const s = await fetch(`https://${LANG}.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(n.name)}&srlimit=1&format=json&origin=*`).then(r => r.json()).catch(() => null);
     const t = s && s.query.search[0] && s.query.search[0].title;
-    if (t) j = await sum('ru', t).catch(() => null);
+    if (t) j = await sum(LANG, t).catch(() => null);
   }
-  if (!j) j = await sum('en', n.en).catch(() => null);
+  if (!j && LANG !== 'en') j = await sum('en', n.en).catch(() => null);
   return wikiCache[n.iso3] = j;
 }
 let infoIso = null;
 function onGeoClick(i) {
-  if (S.choosing) { if (S.choosing.has(owner[i])) S.choice = owner[i]; return; }
+  if (GUEST) return guestClick(i);
+  if (S.choosing && S.hl[0] === S.player) { if (S.choosing.has(owner[i])) S.choice = owner[i]; return; }
   showInfo(i);
 }
 async function showInfo(i) {
-  if (i == null || i < 0 || !orig[i]) return;
+  if (i == null || i < 0 || !orig[i] || RENDER) return;
   const n = N[orig[i]], o = N[owner[i]];
   infoIso = o.iso3;
-  $('#iFlag').src = flagPng(n.iso2); $('#iName').textContent = n.name;
-  $('#iSub').innerHTML = (o === n ? (n.alive ? `В строю · побед: ${n.wins} · ${fmtArea(n.area)}` : '') : `Захвачена: <b style="color:var(--fg)">${esc(o.name)}</b>`) + `<br>Население: ${fmt(n.pop0)} · ×${mult(n.pop0).toFixed(1)}`;
-  $('#iAttack').textContent = `⚔ Следующим атакует: ${o.name}`;
-  $('#iPlay').textContent = S.player === o.iso3 ? '👑 Вы играете за неё' : `👑 Играть за: ${o.name}`;
-  $('#iPlay').disabled = S.player === o.iso3;
-  $('#iWiki').innerHTML = '<p>Загрузка из Википедии…</p>';
+  $('#iFlag').src = n.small; $('#iName').textContent = n.name;
+  $('#iSub').innerHTML = (o === n ? (n.alive ? L(`В строю · побед: ${n.wins} · ${fmtArea(n.area)}`, `Active · wins: ${n.wins} · ${fmtArea(n.area)}`) : '') : L(`Захвачена: <b style="color:var(--fg)">${esc(o.name)}</b>`, `Conquered by <b style="color:var(--fg)">${esc(o.name)}</b>`)) + `<br>${L('Население', 'Population')}: ${fmt(n.pop0)} · ×${mult(n.pop0).toFixed(1)}`;
+  $('#iAttack').textContent = L(`⚔ Следующим атакует: ${o.name}`, `⚔ Attacks next: ${o.name}`);
+  const taken = S.remote[o.iso3];
+  $('#iPlay').textContent = S.player === o.iso3 ? L('👑 Вы играете за неё', '👑 You play as it') : taken ? L('👥 Занята игроком', '👥 Taken by a player') : L(`👑 Играть за: ${o.name}`, `👑 Play as: ${o.name}`);
+  $('#iPlay').disabled = S.player === o.iso3 || !!taken;
+  $('#iWiki').innerHTML = `<p>${L('Загрузка из Википедии…', 'Loading from Wikipedia…')}</p>`;
   $('#iLink').style.display = 'none';
   $('#info').classList.add('on');
   const j = await wiki(n);
   if (infoIso !== o.iso3) return;
-  if (!j) { $('#iWiki').innerHTML = '<p>Статья не найдена.</p>'; return; }
+  if (!j) { $('#iWiki').innerHTML = `<p>${L('Статья не найдена.', 'Article not found.')}</p>`; return; }
   $('#iWiki').innerHTML = (j.thumbnail ? `<img src="${j.thumbnail.source}" alt="">` : '') + `<p></p>`;
   $('#iWiki p').textContent = j.extract;
   $('#iLink').href = j.content_urls.desktop.page; $('#iLink').style.display = '';
 }
-$('#infoX').onclick = () => $('#info').classList.remove('on');
-$('#iAttack').onclick = () => { if (infoIso && N[infoIso].alive) { S.forced = infoIso; $('#iAttack').textContent = '✓ Атакует следующим'; } };
-$('#iPlay').onclick = () => {
-  if (!infoIso || !N[infoIso].alive) return;
-  S.player = infoIso; renderHud(); renderBoards(); save();
-  $('#iPlay').textContent = '👑 Вы играете за неё'; $('#iPlay').disabled = true;
-  toast(`👑 Вы играете за <b>${esc(N[infoIso].name)}</b>. Ваш ход — каждый ${PLAYER_EVERY}-й.`);
-};
-$('#playerChip').onclick = () => { S.player = null; renderHud(); renderBoards(); save(); toast('Режим наблюдателя'); };
-$('#rollBtn').onclick = () => { SFX.ac(); S.rolled = true; };
+
+// ---------- ставки ----------
+function openBets() {
+  const list = alive().sort((a, b) => b.area * mult(b.pop) - a.area * mult(a.pop)).slice(0, 24);
+  $('#betList').innerHTML = list.map(n => `<button class="btn ${n.iso3 === S.bet ? 'on' : ''}" data-iso="${n.iso3}"><img src="${n.small}" alt="">${esc(n.name)}</button>`).join('');
+  $('#betModal').classList.add('on');
+}
 
 // ---------- 9:16 и запись (Screen Capture API + MediaRecorder) ----------
 let rec = null;
-$('#bVert').onclick = () => { document.body.classList.add('vertical'); setTimeout(() => window.dispatchEvent(new Event('resize')), 50); };
-$('#rExit').onclick = () => { if (rec) stopRec(); document.body.classList.remove('vertical'); };
-$('#rPlay').onclick = () => $('#bPlay').click();
-$('#rRec').onclick = () => rec ? stopRec() : startRec();
 async function startRec() {
-  if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia || !window.MediaRecorder) { toast('Запись не поддерживается этим браузером — используйте Chrome или Edge'); return; }
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia || !window.MediaRecorder) { toast(L('Запись не поддерживается этим браузером — используйте Chrome или Edge', 'Recording is not supported here — use Chrome or Edge')); return; }
   let stream;
-  try {
-    stream = await navigator.mediaDevices.getDisplayMedia({video: {frameRate: 30}, audio: true, preferCurrentTab: true, selfBrowserSurface: 'include'});
-  } catch { toast('Запись отменена'); return; }
+  try { stream = await navigator.mediaDevices.getDisplayMedia({video: {frameRate: 30}, audio: true, preferCurrentTab: true, selfBrowserSurface: 'include'}); }
+  catch { toast(L('Запись отменена', 'Recording cancelled')); return; }
   const [vt] = stream.getVideoTracks();
-  // кадрируем запись до рамки 9:16 (Region Capture, Chrome)
   try { if (window.CropTarget && vt.cropTo) await vt.cropTo(await CropTarget.fromElement($('#app'))); } catch {}
   const audio = stream.getAudioTracks().length ? stream.getAudioTracks() : SFX.recTrack();
   const mixed = new MediaStream([vt, ...audio]);
@@ -1172,47 +1679,283 @@ async function startRec() {
   rec.ondataavailable = e => e.data.size && chunks.push(e.data);
   rec.onstop = () => {
     stream.getTracks().forEach(t => t.stop());
-    const blob = new Blob(chunks, {type: mime});
     const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `bitva-stran-ep${String(S.ep).padStart(2, '0')}.${mime.startsWith('video/mp4') ? 'mp4' : 'webm'}`;
+    a.href = URL.createObjectURL(new Blob(chunks, {type: mime}));
+    a.download = `bitva-stran-${MAPKEY}-ep${String(S.ep).padStart(2, '0')}.${mime.startsWith('video/mp4') ? 'mp4' : 'webm'}`;
     a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
-    rec = null; $('#rRec').textContent = '⏺ Запись'; $('#rRec').classList.remove('rec');
+    rec = null; $('#rRec').textContent = L('⏺ Запись', '⏺ Record'); $('#rRec').classList.remove('rec');
   };
   vt.onended = () => rec && stopRec();
   rec.start(1000);
-  $('#rRec').textContent = '⏹ Стоп и сохранить'; $('#rRec').classList.add('rec');
+  $('#rRec').textContent = L('⏹ Стоп и сохранить', '⏹ Stop and save'); $('#rRec').classList.add('rec');
   if (S.paused) setPaused(false);
 }
 function stopRec() { if (rec && rec.state !== 'inactive') rec.stop(); }
 
-// ---------- controls ----------
-$('#bPlay').onclick = () => { SFX.on && SFX.ac(); setPaused(!S.paused); };
-$('#bStep').onclick = () => { SFX.on && SFX.ac(); if (S.paused) { S.stepOnce = true; setPaused(false); } };
+// ---------- мультиплеер: PeerJS (WebRTC), хост ведёт игру ----------
+let peer = null, conns = [], lastSnap = '';
+const loadPeer = () => window.Peer ? Promise.resolve() : new Promise((res, rej) => { const s = document.createElement('script'); s.src = 'https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js'; s.onload = res; s.onerror = rej; document.head.append(s); });
+const send = (c, m) => { try { if (c && c.open) c.send(m); } catch {} };
+const roomLink = code => `${location.origin}${location.pathname}?room=${code}&map=${MAPKEY}&lang=${LANG}`;
+async function hostRoom() {
+  if (peer) { renderRoom(); return; }
+  try { await loadPeer(); } catch { toast(L('PeerJS не загрузился', 'PeerJS failed to load')); return; }
+  const code = Array.from(crypto.getRandomValues(new Uint8Array(6)), b => 'abcdefghjkmnpqrstuvwxyz23456789'[b % 31]).join('');
+  peer = new Peer('bitva-stran-' + code);
+  peer.code = code;
+  renderRoom();
+  peer.on('open', () => { peer.ready = true; renderRoom(); toast(L('Комната создана — отправьте ссылку друзьям', 'Room created — send the link to friends')); });
+  peer.on('error', e => toast('PeerJS: ' + esc(e.type || e.message)));
+  peer.on('connection', c => {
+    c.on('open', () => { conns.push(c); send(c, {type: 'hello', map: MAPKEY}); lastSnap = ''; renderRoom(); });
+    c.on('data', m => hostMsg(c, m));
+    c.on('close', () => {
+      conns = conns.filter(x => x !== c);
+      if (c.iso) { delete S.remote[c.iso]; toast(L(`Игрок за ${esc(N[c.iso].name)} отключился`, `The player of ${esc(N[c.iso].name)} left`)); renderHud(); }
+      renderRoom();
+    });
+  });
+  setInterval(broadcast, 350);
+}
+function hostMsg(c, m) {
+  if (!m || typeof m !== 'object') return;
+  if (m.type === 'claim') {
+    const n = N[m.iso];
+    if (!n || !n.alive || m.iso === S.player || S.remote[m.iso]) { send(c, {type: 'deny'}); return; }
+    if (c.iso) delete S.remote[c.iso];
+    c.iso = m.iso; S.remote[m.iso] = c;
+    send(c, {type: 'claimed', iso: m.iso});
+    toast(L(`👥 Игрок присоединился за <b>${esc(n.name)}</b>`, `👥 A player joined as <b>${esc(n.name)}</b>`));
+    renderHud(); renderRoom(); renderBoards();
+  } else if (m.type === 'choice' && c.iso && S.choosing && S.hl[0] === c.iso) {
+    S.choice = m.iso && S.choosing.has(m.iso) ? m.iso : null;
+  } else if (m.type === 'roll' && c.iso && $('#rollRow').dataset.for === c.iso && !S.rolled) {
+    S.tac[c.iso] = TACTICS[m.tactic] ? m.tactic : 'normal'; S.rolled = true;
+  }
+}
+function renderRoom() {
+  $('#roomCard').classList.add('on');
+  if (GUEST) return;
+  const link = peer && peer.ready ? roomLink(peer.code) : '';
+  $('#roomChip').classList.toggle('on', !!peer); $('#roomChip').querySelector('b').textContent = conns.length;
+  $('#roomBody').innerHTML = !link ? L('Создаём комнату…', 'Creating room…') : `
+    <div class="row">${L('Код', 'Code')}: <code>${peer.code}</code> <button class="btn" id="roomCopy">🔗 ${L('Скопировать ссылку', 'Copy link')}</button></div>
+    <div class="row" style="color:var(--muted)">${L('Друзья открывают ссылку, нажимают на страну и ходят за неё каждый 3-й ход.', 'Friends open the link, click a country and play it every 3rd turn.')}</div>
+    <ul>${conns.map(c => `<li>${c.iso ? nm(c.iso) : L('выбирает страну…', 'choosing a country…')}</li>`).join('') || `<li>${L('пока никого', 'nobody yet')}</li>`}</ul>`;
+  const b = $('#roomCopy'); if (b) b.onclick = async () => { try { await navigator.clipboard.writeText(link); toast(L('Ссылка на комнату скопирована', 'Room link copied')); } catch { prompt('Link:', link); } };
+}
+function snapshot() {
+  const z = d3.zoomTransform(svg.node());
+  return {type: 'state', owner, turn: S.turn, ep: S.ep, title: $('#title').textContent, battle: $('#battle').innerHTML, boards: $('.boards').innerHTML,
+    log: [...$('#log').children].slice(0, 8).map(d => [d.className, d.innerHTML]), dim: S.dimKeep, hl: S.hl, z: [z.k, z.x, z.y],
+    fight: document.body.classList.contains('fight'), allies: S.allies, taken: [S.player, ...Object.keys(S.remote)].filter(Boolean),
+    champ: $('#champ').classList.contains('on') ? $('#champ .box').innerHTML : null, toast: $('#toast').classList.contains('on') ? $('#toast').innerHTML : null};
+}
+function broadcast() {
+  if (!conns.length) return;
+  const s = snapshot(), j = JSON.stringify(s);
+  if (j === lastSnap) return;
+  lastSnap = j;
+  for (const c of conns) send(c, s);
+}
+
+// ---------- гость ----------
+let gPeer = null, gConn = null, gIso = null, gPrompt = null, gTaken = [], gToast = '';
+async function guestInit() {
+  document.body.classList.add('guest');
+  $('#roomCard').classList.add('on');
+  $('#roomBody').innerHTML = L('Подключаемся к комнате…', 'Connecting to the room…');
+  S.es = newEpStats();
+  for (const n of Object.values(N)) { Object.assign(n, {alive: true, terr: new Set(n.geoms), wins: 0, area: n.area0, pop: n.pop0, peak: n.area0}); updatePattern(n); }
+  owner = orig.slice(); paint(); updateBorders(); renderBoards(); renderTitle(); resetBattle();
+  try { await loadPeer(); } catch { $('#roomBody').textContent = L('PeerJS не загрузился', 'PeerJS failed to load'); return; }
+  gPeer = new Peer();
+  gPeer.on('open', () => {
+    gConn = gPeer.connect('bitva-stran-' + ROOM, {reliable: true});
+    gConn.on('open', () => guestStatus());
+    gConn.on('data', guestMsg);
+    gConn.on('close', () => { $('#roomBody').textContent = L('Соединение с комнатой потеряно', 'Lost connection to the room'); });
+  });
+  gPeer.on('error', e => { $('#roomBody').textContent = 'PeerJS: ' + (e.type || e.message); });
+}
+function guestStatus() {
+  $('#roomBody').innerHTML = `<div class="row">${L('Комната', 'Room')} <code>${esc(ROOM)}</code></div><div class="row">${gIso ? L('Вы играете за: ', 'You play as: ') + nm(gIso) : L('Нажмите на свободную страну на карте, чтобы играть за неё.', 'Click a free country on the map to play as it.')}</div>`;
+}
+function guestClick(i) {
+  const o = owner[i]; if (!o || !gConn) return;
+  if (gPrompt && gPrompt.kind === 'target') { if (gPrompt.cands.some(c => c.iso === o)) { send(gConn, {type: 'choice', iso: o}); closeGPrompt(); } return; }
+  if (!gIso) {
+    if (gTaken.includes(o)) { toast(L('Эта страна уже занята', 'This country is taken')); return; }
+    send(gConn, {type: 'claim', iso: o});
+  }
+}
+function closeGPrompt() { gPrompt = null; $('#gPrompt').classList.remove('on'); }
+function guestMsg(m) {
+  if (!m || typeof m !== 'object') return;
+  if (m.type === 'hello' && m.map !== MAPKEY && MAPS[m.map]) { location.search = `?room=${encodeURIComponent(ROOM)}&map=${m.map}&lang=${LANG}`; return; }
+  if (m.type === 'claimed' && N[m.iso]) { gIso = m.iso; S.player = m.iso; guestStatus(); toast(L(`👑 Вы играете за <b>${esc(N[m.iso].name)}</b>`, `👑 You play as <b>${esc(N[m.iso].name)}</b>`)); highlightPlayer(); }
+  if (m.type === 'deny') toast(L('Эту страну выбрать нельзя', 'You cannot pick this country'));
+  if (m.type === 'fell') { toast(L('💀 Ваша страна пала', '💀 Your nation has fallen'), '', 4000); gIso = null; S.player = null; guestStatus(); }
+  if (m.type === 'prompt') {
+    gPrompt = m;
+    $('#gPrompt').classList.add('on');
+    if (m.kind === 'target') {
+      $('#gHint').textContent = L('Ваш ход! Выберите цель на карте или здесь', 'Your turn! Pick a target on the map or here');
+      $('#gCands').innerHTML = (m.cands || []).filter(c => N[c.iso]).map(c => `<button class="cand ${c.ally ? 'ally' : ''}" data-iso="${esc(c.iso)}">${fl(N[c.iso])}${esc(N[c.iso].name)} <small>×${(+c.m).toFixed(1)}</small></button>`).join('');
+      $('#gBtns').innerHTML = `<button class="btn" data-skip="1">${L('Пропустить ход', 'Skip turn')}</button>`;
+    } else {
+      $('#gHint').textContent = m.attacking ? L('Выберите тактику и бросайте', 'Pick a tactic and roll') : L('На вас напали! Выберите тактику обороны', 'You are under attack! Pick a defence');
+      $('#gCands').innerHTML = '';
+      $('#gBtns').innerHTML = (m.opts || []).filter(o => TACTICS[o]).map(o => `<button class="btn tac ${o === 'normal' ? 'primary go' : ''}" data-t="${o}">${TACTICS[o].ic} ${L(TACTICS[o].ru, TACTICS[o].en)}<small>${L(TACTICS[o].dRu, TACTICS[o].dEn)}</small></button>`).join('');
+    }
+    SFX.play('event');
+  }
+  if (m.type === 'state') guestApply(m);
+}
+$('#gPrompt').addEventListener('click', e => {
+  if (!gPrompt || !gConn) return;
+  const c = e.target.closest('.cand'), t = e.target.closest('.tac'), sk = e.target.closest('[data-skip]');
+  if (c) { send(gConn, {type: 'choice', iso: c.dataset.iso}); closeGPrompt(); }
+  else if (sk) { send(gConn, {type: 'choice', iso: null}); closeGPrompt(); }
+  else if (t) { send(gConn, {type: 'roll', tactic: t.dataset.t}); closeGPrompt(); }
+});
+// HTML панелей приходит от чужого браузера: убираем скрипты, обработчики и javascript:-ссылки
+function clean(html) {
+  const t = document.createElement('template'); t.innerHTML = String(html || '');
+  t.content.querySelectorAll('script,iframe,object,embed,link,style,meta,form').forEach(el => el.remove());
+  t.content.querySelectorAll('*').forEach(el => {
+    for (const a of [...el.attributes]) if (/^on/i.test(a.name) || /^\s*javascript:/i.test(a.value) || (a.name === 'src' && !/^https:\/\//.test(a.value))) el.removeAttribute(a.name);
+  });
+  return t.innerHTML;
+}
+function guestApply(m) {
+  gTaken = m.taken || [];
+  if (Array.isArray(m.owner) && m.owner.length === owner.length && JSON.stringify(m.owner) !== JSON.stringify(owner)) {
+    owner = m.owner.map((o, i) => o && N[o] ? o : null);
+    for (const n of Object.values(N)) { n.terr = new Set(); n.area = 0; }
+    owner.forEach((o, i) => { if (o) { N[o].terr.add(i); N[o].area += feats[i].areaKm; } });
+    for (const n of Object.values(N)) { n.alive = n.terr.size > 0; updatePattern(n); }
+    paint(); updateBorders();
+  }
+  S.allies = (m.allies || []).filter(a => N[a.a] && N[a.b]); S.turn = m.turn; S.ep = m.ep;
+  $('#title').textContent = String(m.title || ''); $('#turnN').textContent = +m.turn || 0;
+  $('#battle').innerHTML = clean(m.battle); $('.boards').innerHTML = clean(m.boards);
+  const log = $('#log'); log.innerHTML = ''; for (const [c, h] of m.log || []) { const d = document.createElement('div'); d.className = String(c); d.innerHTML = clean(h); log.append(d); }
+  document.body.classList.toggle('fight', !!m.fight);
+  if (m.dim) setDim(true, m.dim); else setDim(false);
+  highlight(N[m.hl[0]] ? m.hl[0] : null, N[m.hl[1]] ? m.hl[1] : null); highlightPlayer(); renderMarks();
+  const [k, x, y] = m.z; svg.transition().duration(330).call(zoom.transform, d3.zoomIdentity.translate(x, y).scale(k));
+  if (m.toast && m.toast !== gToast) toast(clean(m.toast));
+  gToast = m.toast || '';
+  if (m.champ) { $('#champ .box').innerHTML = clean(m.champ); $('#champ').classList.add('on'); } else $('#champ').classList.remove('on');
+}
+
+// ---------- рендер видео (управляется render/render.mjs) ----------
+function renderInit() {
+  document.body.classList.add('vertical', 'render');
+  S.speed = Math.max(1, Math.min(8, +P.get('speed') || 2));
+  newEpisode(false, P.get('seed') || newSeed(), +P.get('ep') || 1);
+  S.dice = 'seed';
+  const favs = alive().sort((a, b) => b.area * mult(b.pop) - a.area * mult(a.pop)).slice(0, 4);
+  $('#inK').textContent = L('Эпизод', 'Episode') + ' ' + S.ep;
+  $('#inT').textContent = L('Битва стран', 'Battle of Nations');
+  $('#inM').textContent = `${MAPNAME} · ${alive().length} ${noun(alive().length)}`;
+  $('#inQ').textContent = L('Кто победит?', 'Who will win?');
+  $('#inF').innerHTML = favs.map(n => `<div class="fav"><img src="${n.small}" alt="">${esc(n.name)}</div>`).join('');
+  $('#inC').textContent = L('Пишите в комментариях 👇', 'Tell us in the comments 👇');
+  $('#intro').classList.add('on');
+  window.__ready = true;
+  // скрипт рендера включает запись экрана и вызывает __go()
+  window.__go = async () => {
+    window.__t0 = Date.now() / 1000;
+    VOICE.say(L(`Битва стран. ${MAPNAME}. Эпизод ${S.ep}. Кто победит? Пишите в комментариях!`, `Battle of Nations. ${MAPNAME}. Episode ${S.ep}. Who will win? Tell us in the comments!`));
+    SFX.play('fanfare');
+    await sleep(5500);
+    $('#intro').classList.remove('on');
+    setPaused(false);
+    S.gen++; loop();
+  };
+  // офлайн-сведение музыки и звуков по таймкодам событий
+  window.__renderAudio = async (dur, t0) => {
+    const sr = 22050, c = new OfflineAudioContext(1, Math.ceil(sr * dur), sr);
+    const out = c.createGain(); out.gain.value = 0.9; out.connect(c.destination);
+    const mg = c.createGain(); mg.connect(out);
+    mg.gain.setValueAtTime(0.0001, 0); mg.gain.exponentialRampToValueAtTime(0.5, 1.5);
+    mg.gain.setValueAtTime(0.5, Math.max(1.6, dur - 2.5)); mg.gain.linearRampToValueAtTime(0, dur);
+    const tl = EV.filter(e => e.alive != null).map(e => [e.t - t0, e.alive]), n0 = Object.keys(N).length;
+    const tension = t => { let a = n0; for (const [tt, al] of tl) { if (tt > t) break; a = al; } return Math.max(0, Math.min(1, 1 - (a - 1) / (n0 - 1))); };
+    let t = 0, st = 0; while (t < dur) t += MUSIC.schedule(c, mg, t, st++, tension(t));
+    for (const e of EV) if (e.sfx) { const tt = e.t - t0; if (tt >= 0 && tt < dur - 0.2) FX[e.sfx](c, out, tt); }
+    const buf = await c.startRendering(), d = buf.getChannelData(0);
+    const pcm = new Int16Array(d.length); for (let i = 0; i < d.length; i++) pcm[i] = Math.max(-1, Math.min(1, d[i])) * 32767;
+    const bytes = new Uint8Array(pcm.buffer); let bin = '';
+    for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+    window.__pcm = btoa(bin); window.__sr = sr;
+    return window.__pcm.length;
+  };
+}
+
+// ---------- элементы управления ----------
+function initControls() {
+  $('#mapSel').innerHTML = Object.entries(MAPS).map(([k, m]) => `<option value="${k}" ${k === MAPKEY ? 'selected' : ''}>🗺 ${L(m.ru, m.en)}</option>`).join('');
+  $('#mapSel').onchange = e => { store.set('geo-map', e.target.value); location.search = `?map=${e.target.value}&lang=${LANG}`; };
+  $('#bLang').textContent = LANG === 'en' ? 'RU' : 'EN';
+  $('#bLang').onclick = () => { const l = LANG === 'en' ? 'ru' : 'en'; store.set('geo-lang', l); location.search = `?map=${MAPKEY}&lang=${l}`; };
+  $('#bMusic').classList.toggle('on', MUSIC.on);
+  setPaused(true);
+}
+$('#infoX').onclick = () => $('#info').classList.remove('on');
+$('#iAttack').onclick = () => { if (infoIso && N[infoIso].alive) { S.forced = infoIso; $('#iAttack').textContent = L('✓ Атакует следующим', '✓ Attacks next'); } };
+$('#iPlay').onclick = () => {
+  if (!infoIso || !N[infoIso].alive || S.remote[infoIso]) return;
+  S.player = infoIso; renderHud(); renderBoards(); save();
+  $('#iPlay').textContent = L('👑 Вы играете за неё', '👑 You play as it'); $('#iPlay').disabled = true;
+  toast(L(`👑 Вы играете за <b>${esc(N[infoIso].name)}</b>. Ваш ход — каждый ${PLAYER_EVERY}-й.`, `👑 You play as <b>${esc(N[infoIso].name)}</b>. Your turn comes every ${PLAYER_EVERY}rd turn.`));
+};
+$('#playerChip').onclick = () => { if (GUEST) return; S.player = null; renderHud(); renderBoards(); save(); toast(L('Режим наблюдателя', 'Spectator mode')); };
+$('#betChip').onclick = () => !GUEST && openBets();
+$('#bBet').onclick = openBets;
+$('#betClose').onclick = () => $('#betModal').classList.remove('on');
+$('#betList').onclick = e => {
+  const b = e.target.closest('[data-iso]'); if (!b) return;
+  S.bet = b.dataset.iso; $('#betModal').classList.remove('on'); renderHud(); renderBoards(); save();
+  toast(L(`🎯 Ставка принята: <b>${esc(N[S.bet].name)}</b>`, `🎯 Bet placed: <b>${esc(N[S.bet].name)}</b>`));
+};
+$('#bRoom').onclick = hostRoom;
+$('#bVert').onclick = () => { document.body.classList.add('vertical'); setTimeout(() => window.dispatchEvent(new Event('resize')), 50); };
+$('#rExit').onclick = () => { if (rec) stopRec(); document.body.classList.remove('vertical'); };
+$('#rPlay').onclick = () => $('#bPlay').click();
+$('#rRec').onclick = () => rec ? stopRec() : startRec();
+$('#bPlay').onclick = () => { if (SFX.on) SFX.ac(); if (MUSIC.on) MUSIC.start(); setPaused(!S.paused); };
+$('#bStep').onclick = () => { if (SFX.on) SFX.ac(); if (S.paused) { S.stepOnce = true; setPaused(false); } };
 $('#speed').onclick = e => {
   const b = e.target.closest('button'); if (!b) return;
   $('#speed').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
   S.turbo = b.dataset.s === 'turbo'; S.speed = S.turbo ? 4 : +b.dataset.s;
 };
 $('#bSound').onclick = e => { SFX.on = !SFX.on; e.currentTarget.classList.toggle('on', SFX.on); e.currentTarget.textContent = SFX.on ? '🔊' : '🔇'; };
-$('#bVoice').onclick = e => { VOICE.on = !VOICE.on; e.currentTarget.classList.toggle('on', VOICE.on); if (!VOICE.on) speechSynthesis.cancel(); };
+$('#bMusic').onclick = e => { MUSIC.on = !MUSIC.on; store.set('geo-music', MUSIC.on); e.currentTarget.classList.toggle('on', MUSIC.on); MUSIC.on ? MUSIC.start() : MUSIC.stop(); };
+$('#bVoice').onclick = e => { VOICE.on = !VOICE.on; e.currentTarget.classList.toggle('on', VOICE.on); if (!VOICE.on && 'speechSynthesis' in window) speechSynthesis.cancel(); };
 $('#rngChip').onclick = () => {
+  if (GUEST) return;
   S.dice = S.dice === 'seed' ? 'random' : 'seed'; store.set('geo-dice', S.dice); renderHud(); save();
-  toast(S.dice === 'seed' ? `Кубики по зерну <b>${esc(S.seed)}</b> — партию можно повторить по ссылке` : 'Кубики с random.org — истинная случайность');
+  toast(S.dice === 'seed' ? L(`Кубики по зерну <b>${esc(S.seed)}</b> — партию можно повторить по ссылке`, `Dice by seed <b>${esc(S.seed)}</b> — the game can be replayed from a link`) : L('Кубики с random.org — истинная случайность', 'Dice from random.org — true randomness'));
 };
 $('#bShare').onclick = async () => {
-  const url = `${location.origin}${location.pathname}?seed=${encodeURIComponent(S.seed)}`;
-  try { await navigator.clipboard.writeText(url); } catch { prompt('Ссылка на эпизод:', url); return; }
+  const url = `${location.origin}${location.pathname}?map=${MAPKEY}&lang=${LANG}&seed=${encodeURIComponent(S.seed)}`;
+  try { await navigator.clipboard.writeText(url); } catch { prompt('Link:', url); return; }
   toast(S.dice === 'seed'
-    ? 'Ссылка скопирована: по ней эпизод пойдёт ход в ход так же (если не вмешиваться)'
-    : 'Ссылка скопирована: эпизод с тем же зерном. Чтобы повторялся ход в ход, переключите кубики на «по зерну»', '', 4200);
+    ? L('Ссылка скопирована: по ней эпизод пойдёт ход в ход так же (если не вмешиваться)', 'Link copied: the episode will replay turn by turn (if nobody intervenes)')
+    : L('Ссылка скопирована: эпизод с тем же зерном. Чтобы повторялся ход в ход, переключите кубики на «по зерну»', 'Link copied: same seed. For an exact replay switch dice to “by seed”'), '', 4200);
 };
 $('#bReset').onclick = () => newEpisode(true);
 $('#cAgain').onclick = () => newEpisode(true);
+$('#cReplay').onclick = async () => { $('#champ').classList.remove('on'); await timelapse(6000); $('#champ').classList.add('on'); };
+$('aside').addEventListener('click', e => { const li = e.target.closest('li[data-iso]'); if (li && N[li.dataset.iso] && !GUEST) showInfo(N[li.dataset.iso].geoms[0]); });
 document.addEventListener('keydown', e => {
-  if (e.target !== document.body) return;
+  if (e.target !== document.body || GUEST) return;
   if (e.code === 'Space') { e.preventDefault(); $('#bPlay').click(); }
-  if (e.code === 'Enter' && $('#rollRow').classList.contains('on')) $('#rollBtn').click();
+  if (e.code === 'Enter' && $('#rollRow').classList.contains('on')) { const b = $('#rollRow .tac.primary'); if (b) b.click(); }
 });
 
 boot();
